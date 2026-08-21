@@ -9,7 +9,8 @@
   "scripts": {
     "start": "node cli.js",
     "dev": "node cli.js",
-    "test": "node -e \"console.log('CLI Ready')\""
+    "test": "node -e \"console.log('CLI Ready')\"",
+    "test:testnet": "node scripts/testnet-suite.js"
   },
   "keywords": [
     "nft",

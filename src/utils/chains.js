@@ -35,7 +35,7 @@ const CHAINS = {
     name: 'Ethereum Sepolia Testnet',
     chainId: 11155111,
     symbol: 'ETH',
-    defaultRpc: 'https://rpc.sepolia.org',
+    defaultRpc: 'https://ethereum-sepolia-rpc.publicnode.com',
     alchemyPrefix: 'eth-sepolia',
     explorerUrl: 'https://sepolia.etherscan.io',
     seadropAddress: '0x00005EA00Ac477B1030CE78506496e8C2dE24bf5'
