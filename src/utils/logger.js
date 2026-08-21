@@ -111,6 +111,39 @@ const logger = {
   },
 
   /**
+   * Displays a live-updating minting progress bar
+   * @param {number} completed Number of completed mints
+   * @param {number} total Total number of mints
+   * @param {number} successCount Number of successful mints
+   * @param {number} failCount Number of failed mints
+   */
+  mintProgress(completed, total, successCount, failCount) {
+    const width = 20;
+    const filled = total > 0 ? Math.min(width, Math.max(0, Math.round((completed / total) * width))) : 0;
+    const empty = width - filled;
+    const bar = '█'.repeat(filled) + '░'.repeat(empty);
+    process.stdout.write(`\r${chalk.magenta('⚡')} Minting Progress: [${bar}] ${completed}/${total} | ${chalk.green('✔ ' + successCount)} ${chalk.red('✖ ' + failCount)}  `);
+  },
+
+  /**
+   * Prints final mint summary line
+   * @param {number} successCount Number of successful mints
+   * @param {number} failCount Number of failed mints
+   * @param {number} total Total number of mints
+   */
+  mintComplete(successCount, failCount, total) {
+    console.log(`\n${chalk.green('🎉')} Mint Complete: ${chalk.green(successCount + '/' + total + ' successful')}${failCount > 0 ? ' | ' + chalk.red(failCount + '/' + total + ' failed') : ''}`);
+  },
+
+  /**
+   * Prints gas estimate information
+   * @param {string} estimateStr Formatted gas estimate string
+   */
+  gasEstimate(estimateStr) {
+    console.log(chalk.blue('⛽') + ' Gas Estimate: ' + chalk.yellow(estimateStr));
+  },
+
+  /**
    * Horizontal separator line
    */
   separator() {

@@ -9,6 +9,8 @@ const PreflightSimulator = require('./preflightSimulator');
 const connectionManager = require('../services/connectionManager');
 const authService = require('../services/authService');
 const { formatError } = require('../utils/errorTranslator');
+const { mintHistoryWriter } = require('../utils/asyncWriter');
+const { estimateGas, formatGasEstimate } = require('../utils/gasEstimator');
 
 /**
  * Build a sanitized batched GraphQL query with field aliases (SEC-02 Fix)
@@ -208,9 +210,10 @@ async function runAllowlistMint(config) {
       await connectionManager.preWarmSockets(['https://gql.opensea.io/graphql/', ...broadcaster.rpcUrls]);
       await logger.countdown(3.5);
 
-      // T-1.5s: Hammering OpenSea GraphQL for early calldata
+      // T-1.5s: Parallel Hammering OpenSea GraphQL with backoff for early calldata
       logger.speed('T-1.5s: Hammering OpenSea GraphQL for allowlist calldata & signatures...');
       const hammerStart = Date.now();
+      let retryDelay = 100;
       while (Date.now() - hammerStart < 4000) {
         try {
           calldataMap = await fetchBatchCalldata(wallets, config, authHeaders);
@@ -219,9 +222,10 @@ async function runAllowlistMint(config) {
             break;
           }
         } catch (err) {
-          // Keep hammering
+          // Keep hammering with bounded jitter backoff
+          retryDelay = Math.min(250, retryDelay + 25);
         }
-        await new Promise(r => setTimeout(r, 150));
+        await new Promise(r => setTimeout(r, retryDelay));
       }
     } else {
       await logger.countdown(secondsRemaining);
@@ -235,7 +239,7 @@ async function runAllowlistMint(config) {
       calldataMap = await fetchBatchCalldata(wallets, config, authHeaders);
     } catch (err) {
       logger.warn(`Batch query error (${err.message}). Falling back to individual requests...`);
-      await Promise.all(wallets.map(async (w) => {
+      await Promise.allSettled(wallets.map(async (w) => {
         try {
           const headers = authService.getAuthHeaders(w.address) || authHeaders;
           const data = await fetchSingleCalldata(w, config, headers);
@@ -268,13 +272,35 @@ async function runAllowlistMint(config) {
     }
   }
 
+  // Dynamic Gas Estimation (live mempool pricing)
+  let maxFeePerGasWei = ethers.parseUnits((gasSettings.maxFeePerGas || '25.0').toString(), 'gwei');
+  let maxPriorityFeePerGasWei = ethers.parseUnits((gasSettings.maxPriorityFeePerGas || '1.5').toString(), 'gwei');
+
+  try {
+    const gasEst = await estimateGas(provider, 'turbo');
+    if (gasEst) {
+      maxFeePerGasWei = gasEst.maxFeePerGas;
+      maxPriorityFeePerGasWei = gasEst.maxPriorityFeePerGas;
+      logger.gasEstimate(formatGasEstimate(gasEst));
+    }
+  } catch (e) {
+    // Fall back to config gas
+  }
+
   // 5. Pre-sign and Parallel Multi-RPC Broadcast
   logger.speed(`>>> FIRE! Broadcasting across ${broadcaster.rpcUrls.length} RPC node(s) <<<`);
   const startTimeMs = Date.now();
+  const totalWallets = wallets.length;
+  let completedCount = 0;
+  let successCount = 0;
+  let failCount = 0;
 
   const txPromises = wallets.map(async (wallet) => {
     const calldata = calldataMap.get(wallet.address.toLowerCase());
     if (!calldata) {
+      completedCount++;
+      failCount++;
+      logger.mintProgress(completedCount, totalWallets, successCount, failCount);
       return {
         address: wallet.address,
         status: 'SKIPPED',
@@ -291,8 +317,8 @@ async function runAllowlistMint(config) {
         data: calldata.data,
         value: calldata.value ? BigInt(calldata.value) : 0n,
         gasLimit: parseInt(gasSettings.gasLimit) || 300000,
-        maxFeePerGas: ethers.parseUnits((gasSettings.maxFeePerGas || '25.0').toString(), 'gwei'),
-        maxPriorityFeePerGas: ethers.parseUnits((gasSettings.maxPriorityFeePerGas || '1.5').toString(), 'gwei'),
+        maxFeePerGas: maxFeePerGasWei,
+        maxPriorityFeePerGas: maxPriorityFeePerGasWei,
         nonce: nonce,
         chainId: network.chainId,
         type: 2
@@ -306,6 +332,9 @@ async function runAllowlistMint(config) {
       const latencyMs = Date.now() - startTimeMs;
 
       if (receipt && receipt.status === 1) {
+        completedCount++;
+        successCount++;
+        logger.mintProgress(completedCount, totalWallets, successCount, failCount);
         logger.walletLine(wallet.address, 'SUCCESS', `Block #${receipt.blockNumber} (${latencyMs}ms)`);
 
         Notifier.sendMintAlert({
@@ -327,6 +356,9 @@ async function runAllowlistMint(config) {
           details: `Block ${receipt.blockNumber} (${latencyMs}ms)`
         };
       } else {
+        completedCount++;
+        failCount++;
+        logger.mintProgress(completedCount, totalWallets, successCount, failCount);
         logger.walletLine(wallet.address, 'FAILED', 'Transaction reverted on-chain');
 
         Notifier.sendMintAlert({
@@ -347,6 +379,10 @@ async function runAllowlistMint(config) {
         };
       }
     } catch (error) {
+      completedCount++;
+      failCount++;
+      logger.mintProgress(completedCount, totalWallets, successCount, failCount);
+
       const friendlyMsg = formatError(error);
       logger.walletLine(wallet.address, 'ERROR', friendlyMsg);
       logger.warn(`  Technical detail: ${error.message}`);
@@ -372,7 +408,8 @@ async function runAllowlistMint(config) {
   const rawResults = await Promise.allSettled(txPromises);
   const results = rawResults.map(r => r.value || { address: 'Unknown', status: 'FAILED', details: r.reason?.message });
 
-  // Print Summary Table
+  // Print Mint Complete Status (e.g. 10/10 minted) and Summary Table
+  logger.mintComplete(successCount, failCount, totalWallets);
   logger.summaryTable(results);
 
   // 6. Auto-forward NFTs if recipient configured
@@ -381,9 +418,10 @@ async function runAllowlistMint(config) {
     await forwardNFTs(successfulResults, wallets, provider, recipientAddress, explorerUrl);
   }
 
-  // Save history cleanly without private keys (SEC-01)
+  // Non-blocking async history recording (SEC-01)
   try {
-    fs.writeFileSync('mint-history.json', JSON.stringify(results, (k, v) => typeof v === 'bigint' ? v.toString() : v, 2));
+    mintHistoryWriter.write(results);
+    await mintHistoryWriter.flush();
   } catch (e) {}
 
   return results;

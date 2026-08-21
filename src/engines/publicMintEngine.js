@@ -8,6 +8,8 @@ const connectionManager = require('../services/connectionManager');
 const { ethers } = require('ethers');
 const fs = require('fs');
 const { formatError } = require('../utils/errorTranslator');
+const { mintHistoryWriter } = require('../utils/asyncWriter');
+const { estimateGas, formatGasEstimate } = require('../utils/gasEstimator');
 
 /**
  * Execute public mint purely from on-chain SeaDrop parameters (No OpenSea API required)
@@ -59,6 +61,21 @@ async function runPublicMint(config) {
     }
   }
 
+  // Dynamic Gas Estimation (live mempool pricing)
+  let maxFeePerGasWei = ethers.parseUnits((gasSettings.maxFeePerGas || '25.0').toString(), 'gwei');
+  let maxPriorityFeePerGasWei = ethers.parseUnits((gasSettings.maxPriorityFeePerGas || '1.5').toString(), 'gwei');
+
+  try {
+    const gasEst = await estimateGas(provider, 'turbo');
+    if (gasEst) {
+      maxFeePerGasWei = gasEst.maxFeePerGas;
+      maxPriorityFeePerGasWei = gasEst.maxPriorityFeePerGas;
+      logger.gasEstimate(formatGasEstimate(gasEst));
+    }
+  } catch (e) {
+    // Fall back to config gas
+  }
+
   // Pre-encode calldata and pre-fetch nonces
   logger.info('Pre-building and pre-signing transactions for all wallets...');
 
@@ -72,8 +89,8 @@ async function runPublicMint(config) {
         data: calldata,
         value: totalCostPerWalletWei,
         gasLimit: parseInt(gasSettings.gasLimit) || 300000,
-        maxFeePerGas: ethers.parseUnits((gasSettings.maxFeePerGas || '25.0').toString(), 'gwei'),
-        maxPriorityFeePerGas: ethers.parseUnits((gasSettings.maxPriorityFeePerGas || '1.5').toString(), 'gwei'),
+        maxFeePerGas: maxFeePerGasWei,
+        maxPriorityFeePerGas: maxPriorityFeePerGasWei,
         nonce: nonce,
         chainId: network.chainId,
         type: 2
@@ -144,6 +161,10 @@ async function runPublicMint(config) {
   // Multi-RPC Simultaneous Broadcast Racing
   logger.speed(`>>> FIRE! Multi-RPC Broadcasting ${validPrepared.length} transactions across ${broadcaster.rpcUrls.length} node(s) <<<`);
   const startTimeMs = Date.now();
+  const totalWallets = validPrepared.length;
+  let completedCount = 0;
+  let successCount = 0;
+  let failCount = 0;
 
   const broadcastPromises = validPrepared.map(async ({ wallet, signedTx }) => {
     try {
@@ -154,6 +175,9 @@ async function runPublicMint(config) {
       const latencyMs = Date.now() - startTimeMs;
 
       if (receipt && receipt.status === 1) {
+        completedCount++;
+        successCount++;
+        logger.mintProgress(completedCount, totalWallets, successCount, failCount);
         logger.walletLine(wallet.address, 'SUCCESS', `Block #${receipt.blockNumber} (${latencyMs}ms)`);
 
         // Trigger Webhook Notification
@@ -176,6 +200,9 @@ async function runPublicMint(config) {
           details: `Block ${receipt.blockNumber} (${latencyMs}ms)`
         };
       } else {
+        completedCount++;
+        failCount++;
+        logger.mintProgress(completedCount, totalWallets, successCount, failCount);
         logger.walletLine(wallet.address, 'FAILED', 'Transaction reverted on-chain');
 
         Notifier.sendMintAlert({
@@ -196,6 +223,10 @@ async function runPublicMint(config) {
         };
       }
     } catch (error) {
+      completedCount++;
+      failCount++;
+      logger.mintProgress(completedCount, totalWallets, successCount, failCount);
+
       const friendlyMsg = formatError(error);
       logger.walletLine(wallet.address, 'ERROR', friendlyMsg);
       logger.warn(`  Technical detail: ${error.message}`);
@@ -221,7 +252,8 @@ async function runPublicMint(config) {
   const rawResults = await Promise.allSettled(broadcastPromises);
   const results = rawResults.map(r => r.value || { address: 'Unknown', status: 'FAILED', details: r.reason?.message });
 
-  // Print Summary Table
+  // Print Mint Complete Status (e.g. 10/10 minted) and Summary Table
+  logger.mintComplete(successCount, failCount, totalWallets);
   logger.summaryTable(results);
 
   // Auto-forward NFTs if recipient configured
@@ -230,9 +262,10 @@ async function runPublicMint(config) {
     await forwardNFTs(successfulResults, wallets, provider, recipientAddress, explorerUrl);
   }
 
-  // Save history cleanly without private keys (SEC-01)
+  // Non-blocking async history recording (SEC-01)
   try {
-    fs.writeFileSync('mint-history.json', JSON.stringify(results, (k, v) => typeof v === 'bigint' ? v.toString() : v, 2));
+    mintHistoryWriter.write(results);
+    await mintHistoryWriter.flush();
   } catch (e) {}
 
   return results;

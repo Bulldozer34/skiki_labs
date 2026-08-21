@@ -4,6 +4,7 @@ const connectionManager = require('../services/connectionManager');
 
 /**
  * Multi-RPC Simultaneous Broadcast Engine (Races multiple free RPC providers)
+ * v3.1 — Lower poll interval, WebSocket receipt listening, provider caching
  */
 class MultiRpcBroadcaster {
   /**
@@ -14,7 +15,18 @@ class MultiRpcBroadcaster {
     // Filter duplicates and empty values
     this.rpcUrls = Array.from(new Set(rpcUrls.filter(Boolean)));
     this.chainId = chainId;
+    // Use cached providers from connectionManager instead of creating new ones each time
     this.providers = this.rpcUrls.map(url => connectionManager.createEthersProvider(url, chainId));
+
+    // Try to get a WebSocket provider for push-based receipt listening
+    this.wsProvider = null;
+    for (const url of this.rpcUrls) {
+      const wsUrl = connectionManager.constructor.httpToWs(url);
+      if (wsUrl) {
+        this.wsProvider = connectionManager.createWsProvider(wsUrl, chainId);
+        if (this.wsProvider) break;
+      }
+    }
   }
 
   /**
@@ -78,18 +90,32 @@ class MultiRpcBroadcaster {
 
   /**
    * Race multiple providers to get transaction receipt confirmation with minimum latency
+   * Uses WebSocket push-based listening when available, with HTTP polling as fallback
    * @param {string} txHash 
    * @param {number} confirmations 
    * @param {number} timeoutMs 
    * @returns {Promise<{ receipt: ethers.TransactionReceipt, fastProvider: string }>}
    */
   async waitForReceiptFastest(txHash, confirmations = 1, timeoutMs = 60000) {
-    const pollInterval = 350; // ms
+    const pollInterval = 150; // Reduced from 350ms for faster detection
     const deadline = Date.now() + timeoutMs;
 
     return new Promise((resolve, reject) => {
       let resolved = false;
 
+      // Strategy 1: WebSocket-based receipt listening (fastest — push-based, no polling)
+      if (this.wsProvider) {
+        this.wsProvider.waitForTransaction(txHash, confirmations, timeoutMs)
+          .then(receipt => {
+            if (!resolved && receipt) {
+              resolved = true;
+              resolve({ receipt, fastProvider: 'websocket' });
+            }
+          })
+          .catch(() => {}); // WS errors are non-fatal; HTTP polling continues
+      }
+
+      // Strategy 2: HTTP polling across all providers (fallback / parallel race)
       const checkReceipt = async (provider, url) => {
         while (!resolved && Date.now() < deadline) {
           try {
@@ -123,3 +149,4 @@ class MultiRpcBroadcaster {
 }
 
 module.exports = MultiRpcBroadcaster;
+

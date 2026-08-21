@@ -4,8 +4,12 @@ const logger = require('../utils/logger');
 
 /**
  * Wallet Service for managing private keys, nonces, and balances
+ * Includes in-memory sequential nonce queue for 0-latency multi-tx minting
  */
 const WalletService = {
+  // In-memory nonce tracking: address.toLowerCase() -> current nonce
+  _nonceCache: new Map(),
+
   /**
    * Prompt user for private keys (supports single key, one-by-one, or multi-line paste)
    * @returns {Promise<ethers.Wallet[]>}
@@ -96,7 +100,7 @@ const WalletService = {
   },
 
   /**
-   * Prefetch nonces for all wallets concurrently
+   * Prefetch nonces for all wallets concurrently and cache them in memory
    * @param {ethers.Wallet[]} wallets 
    * @param {ethers.Provider} provider 
    * @returns {Promise<Map<string, number>>}
@@ -105,18 +109,52 @@ const WalletService = {
     const nonceMap = new Map();
     
     const promises = wallets.map(async (w) => {
+      const addrKey = w.address.toLowerCase();
       try {
         const nonce = await provider.getTransactionCount(w.address, 'pending');
-        nonceMap.set(w.address.toLowerCase(), nonce);
+        nonceMap.set(addrKey, nonce);
+        this._nonceCache.set(addrKey, nonce);
       } catch (error) {
         logger.error(`Failed to fetch nonce for ${w.address}: ${error.message}`);
         const fallbackNonce = await provider.getTransactionCount(w.address, 'latest').catch(() => 0);
-        nonceMap.set(w.address.toLowerCase(), fallbackNonce);
+        nonceMap.set(addrKey, fallbackNonce);
+        this._nonceCache.set(addrKey, fallbackNonce);
       }
     });
 
     await Promise.all(promises);
     return nonceMap;
+  },
+
+  /**
+   * Get next nonce from in-memory cache, auto-incrementing sequentially
+   * @param {string} address 
+   * @returns {number|null}
+   */
+  consumeNonce(address) {
+    const addrKey = address.toLowerCase();
+    if (!this._nonceCache.has(addrKey)) return null;
+    const current = this._nonceCache.get(addrKey);
+    this._nonceCache.set(addrKey, current + 1);
+    return current;
+  },
+
+  /**
+   * Peek current nonce without incrementing
+   * @param {string} address 
+   * @returns {number|null}
+   */
+  peekNonce(address) {
+    return this._nonceCache.get(address.toLowerCase()) ?? null;
+  },
+
+  /**
+   * Set or override current nonce in memory
+   * @param {string} address 
+   * @param {number} nonce 
+   */
+  setNonce(address, nonce) {
+    this._nonceCache.set(address.toLowerCase(), nonce);
   },
 
   /**
@@ -131,3 +169,4 @@ const WalletService = {
 };
 
 module.exports = WalletService;
+
