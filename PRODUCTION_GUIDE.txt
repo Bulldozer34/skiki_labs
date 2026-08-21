@@ -1,0 +1,759 @@
+================================================================
+  MINT BOT — COMPLETE PRODUCTION GUIDE
+================================================================
+
+HOW TO RUN THIS BOT: LOCAL vs VPS
+---------------------------------
+
+Since you want to spend $0, YES, you can run this purely locally!
+
+OPTION A: LOCAL RUN ($0 FOREVER)
+- Benefits: Completely free, no setup required, absolute privacy.
+- Drawbacks: Your computer must stay awake (no sleeping), and 
+  you must be on the same WiFi to control it from your phone.
+- How: Just open a terminal in the folder, type `npm start`, 
+  and leave it running! This is exactly what you should do to start.
+
+OPTION B: VPS HOSTING (24/7 CLOUD)
+- Benefits: Runs 24/7 on a remote server even if your PC is off.
+- Drawbacks: 
+  * Truly "free forever" VPS providers that don't ask for a 
+    credit card to stop spam bots simply don't exist in 2026. 
+  * Oracle Cloud offers a fantastic "Always Free" tier, but it 
+    requires a credit card just for identity verification (it 
+    won't charge you). 
+
+RECOMMENDATION: Stick to Option A (Local). It's robust, fast, 
+and costs absolutely nothing. If you ever decide you need 24/7 
+uptime, you can upgrade to a VPS later.
+
+================================================================
+STEP 1: CREATE YOUR BURNER WALLETS
+================================================================
+
+WHAT IS A BURNER WALLET?
+  A burner wallet is a NEW wallet you create JUST for minting.
+  You NEVER use your main wallet (where you keep your savings).
+  Why? If something goes wrong, you only lose what's in the
+  burner — your main wallet stays safe.
+
+--- 4a. Install MetaMask (if you don't have it) ---
+
+1. Open Chrome (or Brave/Firefox)
+2. Go to https://metamask.io/download/
+3. Click "Install MetaMask for Chrome"
+4. Click "Add to Chrome" → "Add Extension"
+5. MetaMask fox icon appears in your browser toolbar
+6. Click it → "Create a new wallet"
+7. Set a password (this is just for your browser, not the bot)
+8. Write down your 12-word seed phrase on PAPER
+   (never screenshot or save digitally)
+9. Confirm the seed phrase
+10. Done — you now have Wallet 1
+
+
+--- 4b. Create 2-3 MORE Burner Wallets Inside MetaMask ---
+
+You want multiple wallets so the bot can mint from all of
+them at the same time (one TX per wallet = more chances).
+
+1. Click the colorful circle icon (top-right in MetaMask)
+2. Click "+ Add account or hardware wallet"
+3. Click "Add a new Ethereum account"
+4. Name it: "Mint Burner 2"
+5. Click "Add account"
+6. Repeat to create "Mint Burner 3"
+
+You should now have 3 accounts in MetaMask.
+
+
+--- 4c. Export the Private Keys ---
+
+The bot needs the private key of each burner wallet.
+Here's how to get them:
+
+FOR EACH WALLET (repeat 3 times):
+
+1. In MetaMask, click the account selector (top of MetaMask)
+2. Choose the wallet you want (e.g., "Mint Burner 2")
+3. Click the 3 dots "⋮" button (top-right corner)
+4. Click "Account details"
+5. Click "Show private key"
+6. MetaMask asks you to enter your MetaMask PASSWORD
+   (the one you set when installing MetaMask)
+7. Type your password → click "Confirm"
+8. You'll see a long string starting with 0x
+   Example: 0x4c0883a6...d7e3b127
+9. Click the copy button to copy it
+
+DO NOT SHARE THIS KEY WITH ANYONE. EVER.
+Anyone with this key can steal all ETH from that wallet.
+
+
+--- 4d. Paste Keys Into wallets.txt ---
+
+1. In VS Code (or your editor), open this file:
+   c:\Users\HOME\Downloads\bots\nft-mint-bot\wallets.txt
+
+2. Delete everything already in the file
+
+3. Paste each private key on its OWN LINE, like this:
+
+   0x4c0883a69102937d6231471b5dbb6204fe512961708279f23efb56629753b127
+   0x7a28b5ba57c53603b0b07b56bba752f7784bf506fa95edc395f5cf6c7514fe9d
+   0xe082b17e7b5f6c234b6f3c89d42a5b08fc14c09fa5fbc51c6b53c2c51068e7a2
+
+   (These are EXAMPLES — use YOUR actual keys)
+
+4. Save the file (Ctrl+S)
+
+
+IMPORTANT: wallets.txt is in .gitignore, meaning it will
+NEVER be uploaded to GitHub or shared accidentally.
+
+
+================================================================
+STEP 2: TESTNET DRY RUN (DO THIS FIRST — CRITICAL)
+================================================================
+
+A testnet is a "practice" version of Ethereum.
+It uses FAKE ETH that is free. Nothing costs real money.
+You ALWAYS test here first to make sure the bot works.
+
+
+--- 5a. Turn On Testnet Mode ---
+
+1. Open the file: nft-mint-bot\.env
+2. Find the line that says: TESTNET=false
+3. Change it to:
+
+   TESTNET=true
+
+4. Save the file (Ctrl+S)
+
+That's it. The bot will now use the Sepolia test network.
+
+
+--- 5b. Get Free Test ETH for Your Burner Wallets ---
+
+Your burner wallets need ETH to pay for gas (transaction fees).
+On testnet, you get this for FREE from a "faucet".
+
+1. First, get your wallet ADDRESS (not the private key):
+   - Open MetaMask
+   - Select your first burner wallet
+   - Click your address at the top (starts with 0x...)
+   - It copies to clipboard
+
+2. Go to: https://www.alchemy.com/faucets/ethereum-sepolia
+   (You might need to log into your Alchemy account)
+
+3. Paste your wallet address into the box
+4. Click "Send Me ETH"
+5. Wait 10-30 seconds
+6. You should see 0.5 SepoliaETH in your MetaMask
+   (switch MetaMask to Sepolia network to see it:
+    click network dropdown at top → Show test networks → Sepolia)
+
+7. REPEAT for your other 2 burner wallet addresses
+
+If the Alchemy faucet doesn't work, try these alternatives:
+   - https://sepolia-faucet.pk910.de (mining faucet, slower)
+   - https://faucet.quicknode.com/ethereum/sepolia
+   - Search Google for "sepolia faucet" — there are many
+
+
+--- 5c. Start the Bot ---
+
+1. Open a terminal:
+   - In VS Code: press Ctrl+` (backtick key, below Escape)
+   - Or: open Windows PowerShell from Start menu
+
+2. Navigate to the bot folder. Type this and press Enter:
+
+   cd c:\Users\HOME\Downloads\bots\nft-mint-bot
+
+3. Start the bot. Type this and press Enter:
+
+   npm start
+
+4. You should see something like this:
+
+   ═══════════════════════════════════════
+     ⚡ NFT MINT BOT — Starting Up
+   ═══════════════════════════════════════
+     ⚠️  TESTNET MODE — Sepolia network
+     [BOOT] Initializing RPC router for: sepolia
+     [SERVER] Password hash initialized
+     ⚡ Bot is LIVE on port 3000
+   ═══════════════════════════════════════
+
+IF YOU SEE AN ERROR:
+   - "Cannot find module 'ethers'" → run: npm install
+   - "GUI_PASSWORD not set" → check your .env file
+   - "ALCHEMY_KEY" error → make sure your Alchemy key is in .env
+
+5. Leave this terminal OPEN. Don't close it.
+   The bot runs as long as this terminal is running.
+
+
+--- 5d. Open the Dashboard in Your Browser ---
+
+1. Open Chrome (or any browser)
+2. Go to: http://localhost:3000
+3. You'll see a dark login screen with a lightning bolt
+4. Type your GUI_PASSWORD (the one from .env)
+5. Click LOGIN
+
+WHAT YOU SHOULD SEE:
+   - Top bar: "⚡ MINT BOT" with a blue "SEPOLIA" badge
+   - Left side: panels for Scrape, Mint Config, Trigger, etc.
+   - Right side: empty wallet grid (says "Load wallets to see status")
+   - Bottom: Terminal Log panel
+
+IF LOGIN FAILS:
+   - Double-check GUI_PASSWORD in .env (no spaces around the =)
+   - Restart the bot (Ctrl+C in terminal, then npm start again)
+
+
+--- 5e. Convert & Load Your Wallets ---
+
+In the dashboard:
+
+1. Click the blue "🔄 CONVERT WALLETS" button
+   - This reads wallets.txt, ENCRYPTS all keys with AES-256
+   - Creates wallets.env (encrypted version)
+   - Deletes wallets.txt (so plain keys don't sit on disk)
+   - Log should say: "Converted 3 wallets (0 invalid)"
+
+2. Click "📥 LOAD WALLETS"
+   - Wallet grid on the right fills up with your wallets
+   - Each row shows: index, masked address (0x1234...abcd), balance
+   - GREEN balance = has enough ETH ✅
+   - RED balance = needs more ETH ❌
+
+If all wallets show RED (0.0000 ETH):
+   - Did the faucet ETH arrive? Check MetaMask on Sepolia network
+   - Try the faucet again and wait a few minutes
+   - Click LOAD WALLETS again to refresh balances
+
+
+--- 5f. Test a Scrape ---
+
+You need an NFT contract address to test with.
+For Sepolia testing, you can use any contract — the bot
+will just try to detect the mint function.
+
+1. In the "SCRAPE CONTRACT" section, paste any URL
+   (or leave blank and use manual mode)
+2. If auto-scrape finds nothing, a manual input box appears
+3. Paste a test contract address (any Sepolia contract)
+4. The result box shows: contract address, function, standard
+
+NOTE: On testnet, many contracts won't have a working mint().
+      That's fine — we're testing the BOT, not the contract.
+
+
+--- 5g. Test ARM and FIRE (Optional) ---
+
+If you found a working test contract:
+
+1. Set Mint Price to 0 (or the actual test mint price)
+2. Set Quantity to 1
+3. Set Max Gas to 50 gwei
+4. Click "🔴 ARM BOT"
+   - The FIRE button enables (turns red)
+   - Log says: "BOT ARMED — ready to fire"
+5. Click "🔥 FIRE"
+   - Watch wallet rows change status:
+     🟡 STANDBY → 🔵 FIRING → 🟢 SUCCESS or 🔴 FAILED
+   - The terminal log shows live updates
+
+Even if the mint fails (contract not active, wrong function,
+etc.), the important thing is:
+   ✅ Bot started and logged in
+   ✅ Wallets loaded with balances
+   ✅ ARM and FIRE buttons worked
+   ✅ No crashes or freezes
+
+If all of that worked, your bot is functional!
+
+
+--- 5h. Stop the Bot ---
+
+1. Go to the terminal where you ran npm start
+2. Press Ctrl+C
+3. The bot stops and you'll see shutdown messages
+
+
+================================================================
+STEP 3: SWITCH TO MAINNET (Real ETH)
+================================================================
+
+Only do this AFTER successful testnet run.
+
+1. Open .env
+2. Change: TESTNET=false
+3. Save the file
+
+That's it. Next time you run npm start, the bot uses Ethereum
+Mainnet with real ETH.
+
+BEFORE MAINNET:
+   - Make sure each burner wallet has REAL ETH
+   - Each wallet needs: mint price + at least 0.01 ETH for gas
+   - Example: if mint is 0.05 ETH, send 0.07 ETH per wallet
+   - Send ETH to each burner address from your main wallet
+     (use MetaMask → Send → paste burner address → amount)
+
+
+================================================================
+STEP 4: RUNNING FROM YOUR PHONE (Same WiFi — Easy Way)
+================================================================
+
+If you just want to control the bot from your phone while
+the bot runs on your computer (both on same WiFi):
+
+1. On your computer, find your local IP:
+   - Open PowerShell
+   - Type: ipconfig
+   - Look for "IPv4 Address" under your WiFi adapter
+   - It looks like: 192.168.1.105
+
+2. Start the bot on your computer: npm start
+
+3. On your phone browser, go to:
+   http://192.168.1.105:3000
+   (use YOUR computer's IP, not this example)
+
+4. Login with your GUI_PASSWORD
+
+Now you can arm and fire from your phone!
+
+NOTE: This only works on the SAME WiFi network.
+      For access from anywhere, you need VPS (next step).
+
+
+================================================================
+STEP 5: VPS DEPLOYMENT (Access From Anywhere)
+================================================================
+
+A VPS is a computer in the cloud that runs 24/7.
+You don't need to keep your laptop open.
+Oracle Cloud has a forever-free tier.
+
+SKIP THIS STEP if you only want to run from your computer.
+
+
+--- 8a. Create Oracle Cloud Account ---
+
+1. Go to: https://cloud.oracle.com
+2. Click "Sign Up"
+3. Fill in your details (you need a credit card but
+   the free tier is genuinely free — Oracle never charges
+   unless you manually upgrade)
+4. Complete sign up and verify your email
+5. Wait for account to be provisioned (can take a few hours)
+
+
+--- 8b. Create a Free Virtual Machine ---
+
+1. Log into Oracle Cloud console
+2. Click the hamburger menu (☰) top-left
+3. Click: Compute → Instances
+4. Click "Create Instance"
+5. Configure:
+   Name: mint-bot
+   Image: Change to "Canonical Ubuntu 22.04" (click "Change Image")
+   Shape: Keep "VM.Standard.E2.1.Micro" (has "Always Free" label)
+6. Under "Add SSH keys":
+
+   WHAT IS SSH?
+   SSH is how you connect to the VPS from your computer.
+   You need a key pair (like a lock and key).
+
+   Choose "Generate a key pair for me"
+   Click "Save Private Key" → save the .key file somewhere safe
+   (You'll need this file to connect later)
+
+7. Click "Create"
+8. Wait 2-3 minutes while it starts
+9. On the instance page, find "Public IP Address"
+   Copy it (e.g., 129.213.42.88)
+
+
+--- 8c. Connect to Your VPS ---
+
+On Windows:
+
+1. Open PowerShell
+2. Type (replace YOUR_KEY_FILE and YOUR_VPS_IP):
+
+   ssh -i C:\path\to\your\saved_key.key ubuntu@YOUR_VPS_IP
+
+   Example:
+   ssh -i C:\Users\HOME\Downloads\ssh-key.key ubuntu@129.213.42.88
+
+3. First time it asks "Are you sure?" → type: yes → press Enter
+4. You're now INSIDE the VPS terminal!
+   You'll see something like: ubuntu@mint-bot:~$
+
+IF IT DOESN'T CONNECT:
+   - "Permission denied" → wrong key file, re-download from Oracle
+   - "Connection timed out" → VPS might still be starting, wait
+   - "Connection refused" → SSH not enabled, check Oracle settings
+
+
+--- 8d. Set Up the VPS (Run These Commands One By One) ---
+
+Copy and paste each line INTO THE VPS TERMINAL, one at a time.
+Press Enter after each. Wait for it to finish before the next.
+
+COMMAND 1 — Update the system:
+   sudo apt update && sudo apt upgrade -y
+   (This takes 1-2 minutes. If it asks questions, press Enter)
+
+COMMAND 2 — Install Node.js:
+   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+   (Wait for it to finish)
+
+COMMAND 3 — Finish Node install:
+   sudo apt install -y nodejs
+   (Wait for it to finish)
+
+COMMAND 4 — Verify Node is installed:
+   node -v
+   (Should print v20.something — if it does, good!)
+
+COMMAND 5 — Install Chromium (for the scraper):
+   sudo apt install -y chromium-browser libgbm-dev libnss3 libatk-bridge2.0-0 libdrm2 libxcomposite1 libxdamage1
+   (This takes 1-2 minutes)
+
+
+--- 8e. Upload Your Bot Files to the VPS ---
+
+NOW SWITCH BACK TO YOUR OWN COMPUTER'S TERMINAL.
+(Open a NEW PowerShell window — leave the VPS one open)
+
+Type this (replace YOUR_VPS_IP):
+
+   scp -i C:\path\to\your\saved_key.key -r c:\Users\HOME\Downloads\bots\nft-mint-bot ubuntu@YOUR_VPS_IP:~/
+
+This copies your entire bot folder to the VPS.
+It might take 1-2 minutes (Puppeteer is big).
+
+SEPARATELY, copy your secret .env file:
+
+   scp -i C:\path\to\your\saved_key.key c:\Users\HOME\Downloads\bots\nft-mint-bot\.env ubuntu@YOUR_VPS_IP:~/nft-mint-bot/
+
+
+--- 8f. Install Dependencies on VPS ---
+
+Switch BACK to your VPS terminal and run:
+
+   cd ~/nft-mint-bot
+   npm install
+
+This installs all the packages on the VPS. Takes 2-3 minutes.
+
+
+--- 8g. Open the Firewall (So You Can Access the Dashboard) ---
+
+By default, Oracle blocks all incoming connections.
+You need to open port 3000.
+
+1. Go back to Oracle Cloud in your browser
+2. Click your instance name
+3. Under "Primary VNIC", click the "Subnet" link
+4. Click "Default Security List"
+5. Click "Add Ingress Rules"
+6. Fill in:
+   - Source CIDR: 0.0.0.0/0
+   - Destination Port Range: 3000
+   - Description: Mint Bot Dashboard
+7. Click "Add Ingress Rules"
+
+ALSO — open the firewall on the VPS itself:
+
+   sudo iptables -I INPUT -p tcp --dport 3000 -j ACCEPT
+   sudo netfilter-persistent save
+
+(If it asks to install netfilter-persistent, type Y)
+
+
+--- 8h. Start the Bot on VPS ---
+
+In your VPS terminal:
+
+   cd ~/nft-mint-bot
+   npm start
+
+Test it works: open your phone browser and go to:
+   http://YOUR_VPS_IP:3000
+
+Login with your password. If you see the dashboard — SUCCESS!
+
+
+--- 8i. Keep the Bot Running 24/7 (PM2) ---
+
+Right now, if you close the VPS terminal, the bot stops.
+PM2 keeps it running forever, even after reboots.
+
+COMMAND 1 — Install PM2:
+   sudo npm install -g pm2
+
+COMMAND 2 — Start bot with PM2:
+   pm2 start index.js --name "mint-bot"
+
+COMMAND 3 — Save the configuration:
+   pm2 save
+
+COMMAND 4 — Set PM2 to start on boot:
+   pm2 startup
+
+   It will print a command starting with "sudo env PATH=..."
+   COPY that entire command and paste it back → press Enter
+
+Your bot is now running 24/7!
+
+USEFUL PM2 COMMANDS (memorize these):
+   pm2 status         → shows if bot is running (should say "online")
+   pm2 logs mint-bot  → shows live log output (press Ctrl+C to exit)
+   pm2 restart mint-bot → restarts the bot
+   pm2 stop mint-bot  → stops the bot
+
+
+================================================================
+STEP 6: SET UP ALERTS (Optional But Recommended)
+================================================================
+
+Get notifications on your phone when a mint finishes.
+
+
+--- 9a. Telegram Alerts ---
+
+1. Open Telegram app on your phone
+2. Search for: @BotFather (the one with a blue checkmark)
+3. Tap "Start" or send: /newbot
+4. When asked "name for your bot", type: Mint Bot Alerts
+5. When asked "username", type: mintbot_12345_bot
+   (must end in "bot" and be unique — add random numbers)
+6. BotFather sends you a message with your TOKEN
+   It looks like: 6789012345:ABCdef-ghijklmNOPqrstuvWXYZ
+   COPY THIS TOKEN
+
+7. Now search for YOUR new bot in Telegram (by the username)
+8. Open the chat with it → tap "Start"
+9. Send any message like "hello"
+
+10. Now you need your CHAT ID. Open this URL in your browser
+    (replace YOUR_TOKEN with the token from step 6):
+
+    https://api.telegram.org/botYOUR_TOKEN/getUpdates
+
+    Look for "chat":{"id": followed by a number like 123456789
+    COPY THAT NUMBER — that's your Chat ID
+
+11. Open your .env file and add these lines at the bottom:
+
+    TELEGRAM_BOT_TOKEN=6789012345:ABCdef-ghijklmNOPqrstuvWXYZ
+    TELEGRAM_CHAT_ID=123456789
+
+12. Restart the bot (pm2 restart mint-bot on VPS,
+    or Ctrl+C then npm start on local)
+
+You'll now get Telegram messages after each mint session!
+
+
+--- 9b. Discord Alerts ---
+
+1. Open Discord (app or browser)
+2. Go to your server (or create a new one — it's free)
+3. Right-click a channel (e.g., #mint-alerts)
+4. Click "Edit Channel"
+5. Click "Integrations" in the left menu
+6. Click "Webhooks"
+7. Click "New Webhook"
+8. Name it: "Mint Bot"
+9. Click "Copy Webhook URL"
+10. Open .env and add:
+
+    DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...your_url_here...
+
+11. Restart the bot
+
+Mint results will post as nice embeds in your Discord channel.
+
+
+================================================================
+STEP 7: MINT DAY — WHAT TO DO
+================================================================
+
+
+--- THE NIGHT BEFORE ---
+
+[ ] Check each burner wallet has enough ETH:
+    - Go to https://etherscan.io
+    - Paste each wallet ADDRESS (not private key!)
+    - Each should have: mint price + 0.01 ETH gas buffer
+    - Example: mint costs 0.05 ETH → send 0.07 ETH per wallet
+
+[ ] Make sure .env has: TESTNET=false
+[ ] Make sure your bot is running: pm2 status (should say "online")
+[ ] Try logging into the dashboard from your phone
+[ ] Set your GUI_PASSWORD to something strong
+
+
+--- 30 MINUTES BEFORE MINT ---
+
+On your phone (or computer), open the dashboard:
+
+1. Go to http://YOUR_VPS_IP:3000 → login
+
+2. In "SCRAPE CONTRACT", paste the project's minting page URL
+   → Click SCRAPE
+   → It should find the contract address + mint function
+   → If it can't find it automatically, a text box appears
+     where you can paste the contract address manually
+     (find it on the project's website or their Twitter/Discord)
+
+3. Check the "Contract" and "Function" fields look right
+   → Function should be something like "mint(uint256)" or
+     "publicMint(uint256)"
+
+4. Set MINT CONFIG:
+   → Mint Price: the actual price (in ETH, like 0.05)
+   → Quantity: how many NFTs per wallet (usually 1)
+   → Max Gas: start with 50 gwei
+     (check current gas at https://etherscan.io/gastracker
+      if gas is already 40+, set your max to 100-150)
+
+5. Click "📥 LOAD WALLETS"
+   → All wallets should show GREEN (funded)
+   → If any are RED, they need more ETH
+
+6. Review the GAS ESTIMATE section
+   → 🟢 Best case: what you'd pay if gas is low
+   → 🟡 Average: typical cost
+   → 🔴 Worst case: maximum possible cost
+
+
+--- AT MINT TIME ---
+
+1. Click "🔴 ARM BOT"
+   → FIRE button turns red and enables
+   → Log says "BOT ARMED"
+
+2. Choose your trigger:
+   → MANUAL FIRE: you click FIRE at the exact moment
+   → TIME-BASED: set the exact mint time and bot fires auto
+   → AUTO-DETECT: bot watches the contract and fires
+     the instant the owner enables minting
+
+3. When ready → Click "🔥 FIRE"
+   (or let the trigger do it automatically)
+
+4. WATCH the wallet grid update in real time:
+   🟡 STANDBY → 🔵 FIRING → 🟢 SUCCESS
+                           → 🟠 RETRYING (gas bumped 15%)
+                           → 🔴 FAILED (with reason)
+
+5. DON'T PANIC if you see retries — that's the bot
+   automatically bumping gas and trying again
+
+6. The terminal log shows every step live
+
+
+--- AFTER THE MINT ---
+
+1. Click the "History" tab at the bottom
+   → Shows every wallet: success/fail, gas spent, token IDs
+
+2. For each SUCCESSFUL wallet:
+   → The NFT is now in that burner wallet
+   → To see it: import the burner wallet into MetaMask
+     (Settings → Import Account → paste the private key)
+   → Or view it on OpenSea: opensea.io/YOUR_BURNER_ADDRESS
+
+3. To MOVE the NFT to your main wallet:
+   → In MetaMask, switch to the burner account
+   → Go to the NFT tab
+   → Click the NFT → Send → paste your main wallet address
+   → Confirm the transaction (costs a tiny bit of gas)
+
+4. After moving all NFTs, consider emptying the burner wallets
+   of remaining ETH (send it back to your main wallet)
+
+
+================================================================
+STEP 8: FREE CLOUD DEPLOYMENT ($0 / KOYEB + RAILWAY)
+================================================================
+
+If you want the bot running 24/7 in the cloud without spending
+a single dollar, you can split the bot across free cloud 
+providers.
+
+Since web scrapers (Puppeteer) use too much RAM for a single
+free tier, we split the bot in half:
+
+PART 1: THE MAIN BOT (Deploy to Koyeb)
+Koyeb offers a fantastic "EcoFree" tier that never goes to sleep.
+1. Create an account at https://app.koyeb.com
+2. Click "Create Web Service"
+3. Connect your GitHub repository containing the bot
+4. In the Environment Variables section, paste everything 
+   from your `.env` file.
+5. Deploy! Your main bot is now running 24/7.
+
+PART 2: THE SCRAPER MICROSERVICE (Deploy to Railway/Render)
+Since scraping only happens when you click a button, we can 
+put it on a free tier that limits hours, like Railway.
+1. Create an account at https://railway.app
+2. Create a "New Project" → "Deploy from GitHub repo"
+3. Set the "Build Command" or "Start Command" to:
+   `node scraper-server.js`
+4. In Variables, add `SCRAPER_SECRET=your_secret_password`
+5. Railway will give you a public URL (e.g., https://my-scraper.up.railway.app)
+6. Go back to Koyeb (Main Bot) and add to its Environment Variables:
+   SCRAPER_URL=https://my-scraper.up.railway.app/scrape
+   SCRAPER_SECRET=your_secret_password
+
+PART 3: KEEP THE SCRAPER AWAKE (UptimeRobot)
+Free providers like Railway or Render sometimes put apps to 
+sleep if there is no traffic. To fix this without writing code:
+1. Go to https://uptimerobot.com (it's 100% free)
+2. Create an account
+3. Click "Add New Monitor"
+   - Monitor Type: HTTP(s)
+   - URL/IP: https://my-scraper.up.railway.app/health
+   - Monitoring Interval: 5 minutes
+4. Save! UptimeRobot will ping it every 5 minutes, tricking
+   the provider into thinking it's actively used. It will 
+   never go to sleep.
+
+================================================================
+SECURITY REMINDERS
+================================================================
+
+* NEVER put your main wallet's private key in wallets.txt
+  Only use burner wallets (new accounts created just for minting)
+
+* NEVER share private keys on Discord, Telegram, Twitter, or
+  anywhere online — not even in "encrypted" or "private" chats
+
+* ALWAYS test on Sepolia testnet before using real ETH
+
+* YOUR .env FILE is the most important file to protect
+  It has your API keys and encryption passphrase
+  Never upload it to GitHub, never share it
+
+* If you think any private key is compromised (leaked), move
+  ALL funds out of that wallet IMMEDIATELY — create new burners
+
+* The bot's secureWipe module auto-deletes wallet files when
+  the bot shuts down (on kill signal). This is a safety net.
+
+================================================================
+  You're all set! Good luck on mint day. 🚀
+================================================================
+

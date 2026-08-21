@@ -1,0 +1,444 @@
+# NFT Minting Bot — Hardened Implementation Plan (v2)
+
+All 17 loopholes closed. Files marked with 🆕 are new additions. Loophole fixes marked with 🔒 (critical), 🛡️ (important), or 🔧 (minor).
+
+---
+
+## Updated Folder Structure
+
+```
+nft-mint-bot/
+├── index.js              ← orchestrator + testnet mode 🔒
+├── walletLoader.js       ← now with AES-256 encryption 🔒
+├── scraper.js            ← Axios-first + fallback sigs + ERC detect 🔧
+├── gasEngine.js           
+├── mintExecutor.js       ← staggered firing + wallet groups 🔒🔧
+├── wsServer.js           ← token-verified + reconnect-friendly 🛡️
+├── server.js             ← HTTPS + 4hr token expiry 🛡️
+├── nonceManager.js        
+├── chainDetector.js       
+├── balanceChecker.js     ← gas total tracker 🛡️
+├── mintHistory.js         
+├── rpcRouter.js          ← rate-limit backoff 🔒
+├── secureWipe.js         ← 🆕 secure file deletion 🔒
+├── flashbotsProvider.js  ← 🆕 proper bundle API 🔒
+├── mempoolWatcher.js     ← 🆕 pending TX monitor 🛡️
+├── alertWebhook.js       ← 🆕 Telegram/Discord alerts 🔧
+├── wallets.txt            
+├── wallets.env            
+├── .env                   
+├── .gitignore             
+├── mint-history.json      
+├── ssl/                  ← 🆕 self-signed certs 🛡️
+│   ├── cert.pem
+│   └── key.pem
+└── public/
+    ├── index.html        ← allowlist input + wallet groups 🔧
+    ├── style.css          
+    └── app.js            ← WS auto-reconnect 🛡️
+```
+
+---
+
+## Updated `.env` File
+
+```env
+ALCHEMY_KEY=your_key_here
+ETHERSCAN_KEY=your_key_here
+GUI_PASSWORD=yourpassword
+CHAIN=auto
+
+# 🔒 Testnet Mode (Loophole #1)
+TESTNET=false
+# When true → all RPCs switch to Sepolia, no real ETH spent
+
+# 🔒 Wallet Encryption (Loophole #3)
+WALLET_PASSPHRASE=your_encryption_passphrase
+
+# 🛡️ HTTPS (Loophole #10)
+SSL_CERT=./ssl/cert.pem
+SSL_KEY=./ssl/key.pem
+
+# 🛡️ Token Expiry (Loophole #11)
+TOKEN_EXPIRY_HOURS=4
+
+# 🔧 Alert Webhook (Loophole #13)
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+DISCORD_WEBHOOK_URL=
+```
+
+---
+
+## Chunk 1 — Project Skeleton ⭐
+
+No loophole changes. Same as before.
+
+| Step | Command |
+|------|---------|
+| 1 | `mkdir nft-mint-bot && cd nft-mint-bot && npm init -y` |
+| 2 | `npm install ethers dotenv puppeteer axios ws express bcrypt` |
+| 3 | `npm install @flashbots/ethers-provider-bundle` 🔒 |
+| 4 | Create `.env`, `.gitignore`, `wallets.txt`, `ssl/` directory |
+| 5 | Generate self-signed SSL cert for dev 🛡️ |
+
+---
+
+## Chunk 2 — Core Utilities ⭐⭐
+
+---
+
+### `secureWipe.js` 🆕 🔒 (Loophole #4)
+
+Overwrites file with random bytes before deletion. Used everywhere keys touch disk.
+
+```js
+// Pattern:
+// 1. Get file size
+// 2. Write random bytes of same size (3 passes)
+// 3. fs.unlinkSync()
+// 4. Called in finally{} blocks AND on SIGTERM/SIGINT
+```
+
+---
+
+### `walletLoader.js` 🔒 (Loophole #3 — Encrypted Keys at Rest)
+
+```
+Flow:
+1. Read wallets.txt → validate each key
+2. Encrypt ALL keys with AES-256-GCM using WALLET_PASSPHRASE from .env
+3. Write encrypted blob to wallets.env (NOT plain text key=value)
+4. secureWipe() wallets.txt
+5. At runtime: decrypt wallets.env into memory only
+6. Keys NEVER exist as plain text on disk after conversion
+```
+
+---
+
+### `nonceManager.js` — No changes needed
+
+---
+
+### `balanceChecker.js` 🛡️ (Loophole #12 — Gas Tracking)
+
+```
+Added:
+- trackGasSpent(walletAddress, gasUsedInETH) method
+- getTotalGasSpent() returns sum across all wallets for current session
+- Pushed to GUI top bar via WebSocket
+```
+
+---
+
+### `rpcRouter.js` 🔒 (Loophole #5 — Rate Limiting)
+
+```
+Changes:
+- Add per-RPC request queue with max concurrent requests
+  - Alchemy: max 25 req/sec (free tier safe)
+  - Ankr: max 30 req/sec
+  - Infura: max 20 req/sec
+- Exponential backoff on 429 responses (100ms → 200ms → 400ms → max 3.2s)
+- Stagger wallet groups: wallets 1-17 fire, then 50ms gap, then 18-34, etc.
+- Track requests-per-second counter per RPC in memory
+```
+
+---
+
+### `chainDetector.js` — No changes needed
+
+---
+
+## Chunk 3 — Scraper Engine ⭐⭐⭐
+
+### `scraper.js` 🔧 (Loopholes #7, #15, #16)
+
+```
+Changes:
+
+Layer order REVERSED (Loophole #16 — RAM):
+  Layer 1: Axios + regex scrape page HTML (lightweight, no Chromium)
+  Layer 2: Axios → Etherscan API for verified contract ABI
+  Layer 3: Puppeteer ONLY if both fail (with --single-process --no-sandbox, 30s timeout)
+  Layer 4: Manual input fallback
+
+Unverified contract handling (Loophole #7):
+  If Etherscan ABI fetch returns "not verified":
+  - Try common mint signatures in order:
+    1. mint(uint256)
+    2. publicMint(uint256)
+    3. mint(address,uint256,uint256,bytes)  ← ERC-1155
+    4. claim(uint256)
+    5. purchase(uint256)
+  - Simulate each with eth_call → first that doesn't revert = winner
+  - Report to GUI which signature matched
+
+ERC-721 vs ERC-1155 detection (Loophole #15):
+  After ABI fetch:
+  - Check for supportsInterface(0x80ac58cd) → ERC-721
+  - Check for supportsInterface(0xd9b67a26) → ERC-1155
+  - Adjust TX calldata accordingly
+  - Display detected standard in GUI
+```
+
+---
+
+## Chunk 4 — Gas & Mint Core ⭐⭐⭐⭐
+
+---
+
+### `flashbotsProvider.js` 🆕 🔒 (Loophole #2)
+
+```
+Proper Flashbots bundle integration:
+1. Import @flashbots/ethers-provider-bundle
+2. Create FlashbotsBundleProvider with auth signer (ephemeral wallet)
+3. Build bundle of all mainnet wallet TXs
+4. Call sendBundle() targeting next block (block + 1)
+5. Wait for bundle resolution → check inclusion
+6. If not included, resubmit targeting block + 2 (max 3 attempts)
+7. ONLY used on Ethereum mainnet — L2s skip this entirely
+8. Falls back to standard broadcast if Flashbots relay is down
+```
+
+---
+
+### `mempoolWatcher.js` 🆕 🛡️ (Loophole #8)
+
+```
+Optional mempool monitoring:
+1. Subscribe to pending TXs via WebSocket provider
+2. Filter for TXs sent TO the target contract address
+3. Filter for TXs sent FROM the contract owner address
+4. Watch for function signatures: setActive, unpause, flipSaleState
+5. On match → emit 'MINT_LIVE' event → triggers mintExecutor immediately
+6. Configurable: enabled/disabled from GUI toggle
+7. Uses Alchemy WebSocket endpoint (free tier supports this)
+```
+
+---
+
+### `mintExecutor.js` 🔒🔧 (Loopholes #5, #14, #17)
+
+```
+Changes:
+
+Staggered firing (Loophole #5):
+  - Don't fire all 50 at exact same instant
+  - Fire in 3 batches aligned with RPC groups
+  - 50ms gap between batches
+  - Each batch fires all its wallets in parallel
+
+Allowlist detection (Loophole #14):
+  Before arming, simulate mint for each wallet:
+  - If revert message contains "not on allowlist" / "not whitelisted" / "invalid proof":
+    → Flag wallet as NEEDS_PROOF in GUI
+    → Show Merkle proof input field
+  - If user provides proof, include it in TX calldata
+
+Wallet groups (Loophole #17):
+  - Wallets can be assigned to groups (A, B, C)
+  - Each group can have different: quantity, gas cap
+  - Default: all wallets in group A with same settings
+  - Configured from GUI left panel
+
+Anti-duplicate protection:
+  - Same as before + now persisted to mintHistory on each success
+  - Survives process crash
+```
+
+---
+
+### `gasEngine.js` — No changes needed
+### `mintHistory.js` — No changes needed
+
+---
+
+## Chunk 5 — GUI ⭐⭐⭐⭐
+
+---
+
+### `server.js` 🛡️ (Loopholes #10, #11)
+
+```
+Changes:
+
+HTTPS (Loophole #10):
+  - Read SSL_CERT and SSL_KEY from .env
+  - Create https.createServer() instead of http
+  - If certs missing → warn in console, fall back to HTTP with big warning banner in GUI
+  - Instructions for Let's Encrypt provided in README
+
+Token expiry (Loophole #11):
+  - TOKEN_EXPIRY_HOURS from .env (default 4)
+  - Token stored with issued-at timestamp
+  - Middleware checks expiry on every request
+  - "Logout All Sessions" endpoint → clears all tokens
+  - IP binding: token locked to IP that created it
+```
+
+---
+
+### `wsServer.js` 🛡️ (Loophole #9)
+
+```
+Changes:
+- Server sends ping frame every 15 seconds
+- If no pong in 10 seconds → mark connection dead, clean up
+- Client-side reconnect handled in app.js (below)
+```
+
+---
+
+### `public/app.js` 🛡️🔧 (Loopholes #9, #14, #17)
+
+```
+Changes:
+
+WS auto-reconnect (Loophole #9):
+  - On close/error → show "RECONNECTING..." banner
+  - Retry: 1s → 2s → 4s → 8s → max 30s
+  - On reconnect → re-authenticate with stored session token
+  - If token expired during disconnect → redirect to login
+
+Allowlist UI (Loophole #14):
+  - When wallet flagged NEEDS_PROOF:
+    → Show "Merkle Proof" text input next to that wallet row
+    → User pastes proof → sent to server → included in TX
+
+Wallet groups UI (Loophole #17):
+  - Dropdown per wallet row: Group A / B / C
+  - Per-group settings panel: qty + gas cap
+  - Default all to Group A
+
+Total gas counter (Loophole #12):
+  - Real-time "Total Gas: 0.0000 ETH" in top bar
+  - Updates on every wallet confirmation
+```
+
+---
+
+### `public/index.html` 🔧
+
+```
+New additions to left panel:
+  - "Testnet Mode" toggle (shows ⚠️ TESTNET banner when on)
+  - "Mempool Watch" toggle (enable/disable auto-detect)
+  - Wallet group settings section
+  - Merkle proof input (per wallet, shown conditionally)
+
+New additions to top bar:
+  - Total Gas Spent counter
+  - TESTNET / MAINNET badge
+  - HTTPS lock icon (or ⚠️ if HTTP)
+
+New additions to right panel:
+  - Group label per wallet row
+  - NEEDS_PROOF status badge
+
+History tab additions:
+  - Total gas spent per session
+  - Profit/loss calculator
+```
+
+---
+
+## Chunk 6 — Orchestrator ⭐⭐⭐⭐⭐
+
+### `index.js` 🔒 (Loophole #1 — Testnet Mode)
+
+```
+Testnet mode:
+  if (process.env.TESTNET === 'true'):
+    - RPC endpoints → Sepolia (Alchemy Sepolia, Ankr Sepolia, Infura Sepolia)
+    - Etherscan → Sepolia Etherscan API
+    - Flashbots → DISABLED (no Sepolia support)
+    - GUI banner → "⚠️ TESTNET MODE — NO REAL ETH"
+    - All other logic unchanged
+
+Auto-detect trigger (Loophole #6):
+  - If trigger type = "auto-detect":
+    1. Start mempoolWatcher for target contract
+    2. ALSO poll contract.saleIsActive() / contract.paused() every 2 seconds
+    3. Whichever fires first → trigger mint
+    4. Displayed in GUI: "WATCHING... waiting for sale to go live"
+
+Graceful shutdown:
+  - SIGTERM/SIGINT → abort all pending TXs
+  - secureWipe() wallets.env
+  - Close all WebSocket connections
+  - Log final state to mint-history.json
+  - Process.exit(0)
+```
+
+---
+
+### `alertWebhook.js` 🆕 🔧 (Loophole #13)
+
+```
+On mint session complete:
+  Build summary:
+    - Contract address
+    - Network
+    - Wallets: X success / Y failed / Z skipped
+    - Total gas spent
+    - Token IDs minted
+
+  If TELEGRAM_BOT_TOKEN set:
+    POST to api.telegram.org/bot{token}/sendMessage
+
+  If DISCORD_WEBHOOK_URL set:
+    POST embed to Discord webhook
+
+  Both optional — only fires if env vars are configured
+```
+
+---
+
+## Loophole Closure Summary
+
+| # | Loophole | Severity | Closed In |
+|---|----------|----------|-----------|
+| 1 | No testnet mode | 🔴 Critical | `index.js` — TESTNET env flag |
+| 2 | Wrong Flashbots API | 🔴 Critical | `flashbotsProvider.js` — proper bundle API |
+| 3 | Unencrypted keys on disk | 🔴 Critical | `walletLoader.js` — AES-256-GCM encryption |
+| 4 | No secure deletion | 🔴 Critical | `secureWipe.js` — 3-pass overwrite + unlink |
+| 5 | Rate limiting | 🔴 Critical | `rpcRouter.js` — queue + backoff + stagger |
+| 6 | Auto-detect trigger undefined | 🟡 Important | `index.js` — poll saleIsActive + mempool |
+| 7 | Unverified contract ABI | 🟡 Important | `scraper.js` — fallback signature list |
+| 8 | No mempool monitoring | 🟡 Important | `mempoolWatcher.js` — pending TX filter |
+| 9 | No WS reconnection | 🟡 Important | `app.js` — exponential backoff reconnect |
+| 10 | No HTTPS | 🟡 Important | `server.js` — https.createServer + SSL |
+| 11 | 24hr token too long | 🟡 Important | `server.js` — 4hr expiry + IP binding |
+| 12 | No gas total tracking | 🟡 Important | `balanceChecker.js` + GUI top bar |
+| 13 | No alert integration | 🟢 Minor | `alertWebhook.js` — Telegram + Discord |
+| 14 | No allowlist check | 🟢 Minor | `mintExecutor.js` + GUI proof input |
+| 15 | No ERC-721/1155 detection | 🟢 Minor | `scraper.js` — supportsInterface check |
+| 16 | Puppeteer RAM risk | 🟢 Minor | `scraper.js` — Axios-first, Puppeteer last |
+| 17 | No wallet grouping | 🟢 Minor | `mintExecutor.js` + GUI group UI |
+
+---
+
+## Verification Plan
+
+### Automated (Sepolia Testnet)
+1. Deploy simple ERC-721 contract to Sepolia
+2. Run full mint flow with `TESTNET=true` and 5 wallets
+3. Verify: encryption → decryption → nonce → staggered fire → confirm → history log
+4. Verify Flashbots skipped on testnet (correct behavior)
+5. Verify secureWipe deletes wallets.env on shutdown
+
+### GUI Tests
+1. Open on mobile browser over HTTPS
+2. Login → verify 4hr expiry → verify IP binding
+3. Kill network → verify "RECONNECTING..." banner → reconnect
+4. Load wallets → verify allowlist detection for restricted contract
+5. Verify total gas counter updates in real time
+
+### Security Audit
+1. Confirm `wallets.env` is encrypted blob, not plain text
+2. Confirm `wallets.txt` is securely wiped after conversion
+3. Confirm SIGTERM triggers secureWipe
+4. Confirm rate limiter prevents 429s from Alchemy
+5. Confirm session token cannot be reused from different IP

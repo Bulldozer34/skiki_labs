@@ -1,0 +1,24 @@
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+wallets.env
+wallets.txt
+*.key
+*.pem
+*.p12
+
+# Output & Logs
+out.log
+out.err
+*.log
+npm-debug.log*
+mint-history.json
+
+# Dependencies & OS
+node_modules/
+.DS_Store
+Thumbs.db
+ssl/
+.idea/
+.vscode/
