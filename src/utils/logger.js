@@ -69,8 +69,8 @@ const logger = {
    */
   summaryTable(results) {
     const table = new Table({
-      head: [chalk.cyan('Wallet'), chalk.cyan('Status'), chalk.cyan('Tx Hash'), chalk.cyan('Details')],
-      colWidths: [18, 15, 20, 30]
+      head: [chalk.cyan('Wallet'), chalk.cyan('Status'), chalk.cyan('Tx Hash'), chalk.cyan('Speed'), chalk.cyan('Details')],
+      colWidths: [18, 15, 20, 12, 28]
     });
 
     for (const res of results) {
@@ -80,11 +80,22 @@ const logger = {
       let statusStr = res.status;
       if (res.status === 'SUCCESS') statusStr = chalk.green(res.status);
       else if (res.status === 'FAILED') statusStr = chalk.red(res.status);
+
+      let speedStr = chalk.gray('—');
+      if (res.mintDurationMs != null) {
+        const ms = res.mintDurationMs;
+        if (ms < 1000) {
+          speedStr = chalk.green(`${ms}ms`);
+        } else {
+          speedStr = chalk.yellow(`${(ms / 1000).toFixed(2)}s`);
+        }
+      }
       
       table.push([
         truncatedAddr,
         statusStr,
         truncatedTx,
+        speedStr,
         res.details || ''
       ]);
     }
@@ -141,6 +152,46 @@ const logger = {
    */
   gasEstimate(estimateStr) {
     console.log(chalk.blue('⛽') + ' Gas Estimate: ' + chalk.yellow(estimateStr));
+  },
+
+  /**
+   * Prints a speed performance report after minting completes
+   * @param {Array} results Array of mint results with mintDurationMs
+   * @param {number} totalSessionMs Total session duration from FIRE to last receipt
+   */
+  speedReport(results, totalSessionMs) {
+    const successResults = results.filter(r => r.status === 'SUCCESS' && r.mintDurationMs != null);
+
+    if (successResults.length === 0) {
+      console.log(chalk.gray('  No successful mints to report speed for.'));
+      return;
+    }
+
+    const durations = successResults.map(r => r.mintDurationMs);
+    const fastest = Math.min(...durations);
+    const slowest = Math.max(...durations);
+    const average = Math.round(durations.reduce((a, b) => a + b, 0) / durations.length);
+
+    console.log(chalk.magenta('⚡') + chalk.bold(' SPEED REPORT'));
+    console.log(chalk.gray('  ─────────────────────────────────────'));
+
+    const speedTable = new Table({
+      head: [chalk.magenta('Metric'), chalk.magenta('Value')],
+      colWidths: [30, 25],
+      style: { head: [], border: [] }
+    });
+
+    speedTable.push(
+      [chalk.cyan('Fastest Mint'), chalk.green(`${fastest < 1000 ? fastest + 'ms' : (fastest / 1000).toFixed(2) + 's'}`)],
+      [chalk.cyan('Slowest Mint'), chalk.yellow(`${slowest < 1000 ? slowest + 'ms' : (slowest / 1000).toFixed(2) + 's'}`)],
+      [chalk.cyan('Average Mint Speed'), chalk.white(`${average < 1000 ? average + 'ms' : (average / 1000).toFixed(2) + 's'}`)],
+      [chalk.cyan('Total Session Duration'), chalk.white(`${totalSessionMs < 1000 ? totalSessionMs + 'ms' : (totalSessionMs / 1000).toFixed(2) + 's'}`)],
+      [chalk.cyan('Successful Mints'), chalk.green(`${successResults.length}`)],
+      [chalk.cyan('Mints Per Second'), chalk.white(`${(successResults.length / (totalSessionMs / 1000)).toFixed(2)}`)]
+    );
+
+    console.log(speedTable.toString());
+    console.log('');
   },
 
   /**

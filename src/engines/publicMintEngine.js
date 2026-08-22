@@ -167,18 +167,20 @@ async function runPublicMint(config) {
   let failCount = 0;
 
   const broadcastPromises = validPrepared.map(async ({ wallet, signedTx }) => {
+    const walletStartMs = Date.now();
     try {
       const broadcastResult = await broadcaster.broadcastFastest(signedTx);
       logger.walletLine(wallet.address, 'Sent', `Fastest RPC: ${broadcastResult.fastestRpc} (${broadcastResult.durationMs}ms)`);
 
       const { receipt } = await broadcaster.waitForReceiptFastest(broadcastResult.txHash, 1, 60000);
+      const mintDurationMs = Date.now() - walletStartMs;
       const latencyMs = Date.now() - startTimeMs;
 
       if (receipt && receipt.status === 1) {
         completedCount++;
         successCount++;
         logger.mintProgress(completedCount, totalWallets, successCount, failCount);
-        logger.walletLine(wallet.address, 'SUCCESS', `Block #${receipt.blockNumber} (${latencyMs}ms)`);
+        logger.walletLine(wallet.address, 'SUCCESS', `Block #${receipt.blockNumber} (${mintDurationMs}ms)`);
 
         // Trigger Webhook Notification
         Notifier.sendMintAlert({
@@ -197,7 +199,8 @@ async function runPublicMint(config) {
           status: 'SUCCESS',
           txHash: broadcastResult.txHash,
           receipt,
-          details: `Block ${receipt.blockNumber} (${latencyMs}ms)`
+          mintDurationMs,
+          details: `Block ${receipt.blockNumber} (${mintDurationMs}ms)`
         };
       } else {
         completedCount++;
@@ -251,10 +254,14 @@ async function runPublicMint(config) {
 
   const rawResults = await Promise.allSettled(broadcastPromises);
   const results = rawResults.map(r => r.value || { address: 'Unknown', status: 'FAILED', details: r.reason?.message });
+  const totalSessionMs = Date.now() - startTimeMs;
 
   // Print Mint Complete Status (e.g. 10/10 minted) and Summary Table
   logger.mintComplete(successCount, failCount, totalWallets);
   logger.summaryTable(results);
+
+  // Print Speed Performance Report
+  logger.speedReport(results, totalSessionMs);
 
   // Auto-forward NFTs if recipient configured
   const successfulResults = results.filter(r => r.status === 'SUCCESS' && r.receipt);
@@ -263,8 +270,13 @@ async function runPublicMint(config) {
   }
 
   // Non-blocking async history recording (SEC-01)
+  // Enrich results with session timing data
+  const historyResults = results.map(r => ({
+    ...r,
+    totalSessionDurationMs: totalSessionMs
+  }));
   try {
-    mintHistoryWriter.write(results);
+    mintHistoryWriter.write(historyResults);
     await mintHistoryWriter.flush();
   } catch (e) {}
 

@@ -309,6 +309,7 @@ async function runAllowlistMint(config) {
       };
     }
 
+    const walletStartMs = Date.now();
     try {
       const nonce = nonceMap.get(wallet.address.toLowerCase()) ?? await provider.getTransactionCount(wallet.address, 'pending');
 
@@ -329,13 +330,14 @@ async function runAllowlistMint(config) {
       logger.walletLine(wallet.address, 'Sent', `Fastest: ${broadcastResult.fastestRpc} (${broadcastResult.durationMs}ms)`);
 
       const { receipt } = await broadcaster.waitForReceiptFastest(broadcastResult.txHash, 1, 60000);
+      const mintDurationMs = Date.now() - walletStartMs;
       const latencyMs = Date.now() - startTimeMs;
 
       if (receipt && receipt.status === 1) {
         completedCount++;
         successCount++;
         logger.mintProgress(completedCount, totalWallets, successCount, failCount);
-        logger.walletLine(wallet.address, 'SUCCESS', `Block #${receipt.blockNumber} (${latencyMs}ms)`);
+        logger.walletLine(wallet.address, 'SUCCESS', `Block #${receipt.blockNumber} (${mintDurationMs}ms)`);
 
         Notifier.sendMintAlert({
           address: wallet.address,
@@ -353,7 +355,8 @@ async function runAllowlistMint(config) {
           status: 'SUCCESS',
           txHash: broadcastResult.txHash,
           receipt,
-          details: `Block ${receipt.blockNumber} (${latencyMs}ms)`
+          mintDurationMs,
+          details: `Block ${receipt.blockNumber} (${mintDurationMs}ms)`
         };
       } else {
         completedCount++;
@@ -407,10 +410,14 @@ async function runAllowlistMint(config) {
 
   const rawResults = await Promise.allSettled(txPromises);
   const results = rawResults.map(r => r.value || { address: 'Unknown', status: 'FAILED', details: r.reason?.message });
+  const totalSessionMs = Date.now() - startTimeMs;
 
   // Print Mint Complete Status (e.g. 10/10 minted) and Summary Table
   logger.mintComplete(successCount, failCount, totalWallets);
   logger.summaryTable(results);
+
+  // Print Speed Performance Report
+  logger.speedReport(results, totalSessionMs);
 
   // 6. Auto-forward NFTs if recipient configured
   const successfulResults = results.filter(r => r.status === 'SUCCESS' && r.receipt);
@@ -419,8 +426,13 @@ async function runAllowlistMint(config) {
   }
 
   // Non-blocking async history recording (SEC-01)
+  // Enrich results with session timing data
+  const historyResults = results.map(r => ({
+    ...r,
+    totalSessionDurationMs: totalSessionMs
+  }));
   try {
-    mintHistoryWriter.write(results);
+    mintHistoryWriter.write(historyResults);
     await mintHistoryWriter.flush();
   } catch (e) {}
 
