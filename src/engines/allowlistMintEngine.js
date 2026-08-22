@@ -41,6 +41,7 @@ function buildBatchQuery(wallets, config) {
     action: MINT
     quantity: ${safeQuantity}
     contractAddress: "${safeContract}"
+    fromAssets: []
   ) {
     ... on SwapActionTransaction {
       transactionSubmissionData {
@@ -105,13 +106,14 @@ async function fetchSingleCalldata(wallet, config, authHeaders) {
   const gqlUrl = process.env.OPENSEA_GQL_URL || 'https://gql.opensea.io/graphql/';
 
   const query = `
-    query MintActionTimelineQuery($chain: ChainScalar!, $address: AddressScalar!, $action: ActionType!, $quantity: Int!, $nftContractAddress: AddressScalar!) {
+    query MintActionTimelineQuery($chain: ChainScalar!, $address: AddressScalar!, $action: ActionType!, $quantity: Int!, $nftContractAddress: AddressScalar!, $fromAssets: [AssetQuantityInput!]!) {
       swap(
         chain: $chain
         address: $address
         action: $action
         quantity: $quantity
         contractAddress: $nftContractAddress
+        fromAssets: $fromAssets
       ) {
         ... on SwapActionTransaction {
           transactionSubmissionData {
@@ -134,7 +136,8 @@ async function fetchSingleCalldata(wallet, config, authHeaders) {
     address: ethers.getAddress(wallet.address).toLowerCase(),
     action: 'MINT',
     quantity: Math.max(1, Math.floor(Number(quantity) || 1)),
-    nftContractAddress: ethers.getAddress(nftContractAddress).toLowerCase()
+    nftContractAddress: ethers.getAddress(nftContractAddress).toLowerCase(),
+    fromAssets: []
   };
 
   const res = await connectionManager.axiosInstance.post(gqlUrl, { query, variables }, {
