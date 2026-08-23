@@ -17,7 +17,7 @@ function getOpenSeaApiKey() {
 }
 
 function getDropSlug(config) {
-  return (config.collectionSlug || config.slug || '').trim();
+  return (config.collectionSlug || config.slug || config.nftContractAddress || '').trim();
 }
 
 function normalizeTxValue(value) {

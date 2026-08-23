@@ -227,8 +227,8 @@ async function main() {
     // STEP 7: Gas Configuration
     // ---------------------------------------------------------
     logger.separator();
-    // Fetch live base fee to assist user
-    let liveBaseFeeGwei = process.env.DEFAULT_MAX_FEE_GWEI || '0.1';
+    const isL2 = chainConfig.chainId !== 1; // Robinhood, Base, Arbitrum, Optimism, etc.
+    let liveBaseFeeGwei = isL2 ? '0.04' : '25.0';
     try {
       const feeData = await provider.getFeeData();
       if (feeData.maxFeePerGas) {
@@ -237,9 +237,12 @@ async function main() {
       }
     } catch (e) {}
 
-    const defaultMaxFee = process.env.DEFAULT_MAX_FEE_GWEI || (parseFloat(liveBaseFeeGwei) * 1.5).toFixed(2);
-    const defaultPriorityFee = process.env.DEFAULT_PRIORITY_FEE_GWEI || '0.1';
-    const defaultGasLimit = parseInt(process.env.DEFAULT_GAS_LIMIT) || 300000;
+    const calculatedMaxFee = (parseFloat(liveBaseFeeGwei) * 1.5).toFixed(3);
+    const defaultMaxFee = isL2 
+      ? Math.max(0.05, Math.min(parseFloat(calculatedMaxFee) || 0.1, 0.5)).toString() 
+      : (process.env.DEFAULT_MAX_FEE_GWEI || '25.0');
+    const defaultPriorityFee = isL2 ? '0.01' : (process.env.DEFAULT_PRIORITY_FEE_GWEI || '1.5');
+    const defaultGasLimit = isL2 ? 200000 : (parseInt(process.env.DEFAULT_GAS_LIMIT) || 300000);
 
     const gasAnswers = await inquirer.prompt([
       {
