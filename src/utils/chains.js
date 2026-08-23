@@ -112,10 +112,45 @@ function getChainChoices() {
   }));
 }
 
+/**
+ * Get standardized uppercase chain key (e.g., 'ROBINHOOD', 'ETHEREUM', 'BASE')
+ * @param {object|string|number} chain 
+ * @returns {string}
+ */
+function getChainKey(chain) {
+  if (!chain) return 'ETHEREUM';
+  if (typeof chain === 'string') {
+    const uc = chain.toUpperCase().trim();
+    if (CHAINS[uc]) return uc;
+    if (uc.includes('ROBINHOOD') && uc.includes('TESTNET')) return 'ROBINHOOD_TESTNET';
+    if (uc.includes('ROBINHOOD')) return 'ROBINHOOD';
+    if (uc.includes('BASE')) return 'BASE';
+    if (uc.includes('ARBITRUM') || uc.includes('ARB')) return 'ARBITRUM';
+    if (uc.includes('OPTIMISM') || uc.includes('OPT')) return 'OPTIMISM';
+    if (uc.includes('SEPOLIA')) return 'SEPOLIA';
+    return 'ETHEREUM';
+  }
+
+  const chainId = Number(chain.chainId);
+  if (chainId) {
+    for (const [key, config] of Object.entries(CHAINS)) {
+      if (config.chainId === chainId) return key;
+    }
+  }
+
+  if (chain.name) {
+    return getChainKey(chain.name);
+  }
+
+  return 'ETHEREUM';
+}
+
 module.exports = {
   CHAINS,
   getChainByName,
   getChainById,
+  getChainKey,
   expandAlchemyKey,
   getChainChoices
 };
+

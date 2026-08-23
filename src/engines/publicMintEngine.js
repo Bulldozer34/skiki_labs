@@ -1,4 +1,5 @@
 const { getPublicDropParams, encodeMintPublicCalldata, SEADROP_ADDRESSES } = require('../contracts/seadrop');
+const { getChainKey } = require('../utils/chains');
 const logger = require('../utils/logger');
 const Notifier = require('../utils/notifier');
 const { forwardNFTs } = require('./nftForwarder');
@@ -19,7 +20,7 @@ async function runPublicMint(config) {
   const { wallets, provider, rpcUrls, nftContractAddress, chain, quantity, gasSettings, recipientAddress } = config;
   let { startTime } = config;
   
-  const chainKey = (typeof chain === 'string' ? chain : chain.name).toUpperCase();
+  const chainKey = getChainKey(chain);
   const explorerUrl = chain.explorerUrl || 'https://etherscan.io';
   const seadropAddress = SEADROP_ADDRESSES[chainKey] || '0x00005EA00Ac477B1030CE78506496e8C2dE24bf5';
 

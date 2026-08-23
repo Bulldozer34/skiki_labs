@@ -1,6 +1,7 @@
 const axios = require('axios');
 const { ethers } = require('ethers');
 const fs = require('fs');
+const { getChainKey } = require('../utils/chains');
 const logger = require('../utils/logger');
 const Notifier = require('../utils/notifier');
 const { forwardNFTs } = require('./nftForwarder');
@@ -23,10 +24,8 @@ function buildBatchQuery(wallets, config) {
     throw new Error(`Invalid NFT contract address format: ${nftContractAddress}`);
   }
 
-  // 2. Strict chain identifier allowlist
-  const rawChain = (typeof chain === 'string' ? chain : (chain.name || 'BASE')).toUpperCase();
-  const ALLOWED_CHAINS = new Set(['ETHEREUM', 'BASE', 'ARBITRUM', 'OPTIMISM', 'ROBINHOOD']);
-  const chainIdentifier = ALLOWED_CHAINS.has(rawChain) ? rawChain : 'BASE';
+  // 2. Strict chain identifier resolution
+  const chainIdentifier = getChainKey(chain);
 
   // 3. Strict integer quantity and checksummed address
   const safeQuantity = Math.max(1, Math.floor(Number(quantity) || 1));
@@ -102,7 +101,7 @@ async function fetchBatchCalldata(wallets, config, authHeaders) {
  */
 async function fetchSingleCalldata(wallet, config, authHeaders) {
   const { chain, quantity, nftContractAddress } = config;
-  const chainIdentifier = (typeof chain === 'string' ? chain : (chain.name || 'BASE')).toUpperCase();
+  const chainIdentifier = getChainKey(chain);
   const gqlUrl = process.env.OPENSEA_GQL_URL || 'https://gql.opensea.io/graphql/';
 
   const query = `
@@ -255,7 +254,8 @@ async function runAllowlistMint(config) {
   logger.info(`Valid calldata acquired for ${calldataMap.size}/${wallets.length} wallet(s).`);
 
   if (calldataMap.size === 0) {
-    throw new Error('Could not obtain calldata for any wallet. Mint may not be live or wallets not eligible.');
+    logger.warn('Tip: If this is an OpenSea SeaDrop contract, try selecting "Public Mint (Direct SeaDrop Contract)" mode.');
+    throw new Error('Could not obtain calldata for any wallet. Mint may not be live, wallets may not be eligible, or OpenSea GraphQL signed minting is unavailable.');
   }
 
   // 4. Pre-flight simulation on first valid calldata

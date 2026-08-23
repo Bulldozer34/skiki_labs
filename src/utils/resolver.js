@@ -18,11 +18,15 @@ function resolveCollection(input) {
   }
 
   // Case 2: OpenSea collection URL
-  // e.g., https://opensea.io/collection/my-nft
-  const collectionUrlRegex = /opensea\.io\/collection\/([^/?]+)/;
+  // e.g., https://opensea.io/collection/my-nft or https://opensea.io/collection/0x1234...
+  const collectionUrlRegex = /opensea\.io\/collection\/([^/?#]+)/;
   const collectionMatch = input.match(collectionUrlRegex);
   if (collectionMatch) {
-    return { address: null, slug: collectionMatch[1], chain: null };
+    const rawTarget = collectionMatch[1].trim();
+    if (addressRegex.test(rawTarget)) {
+      return { address: rawTarget, slug: null, chain: null };
+    }
+    return { address: null, slug: rawTarget, chain: null };
   }
 
   // Case 3: OpenSea item URL

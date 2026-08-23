@@ -126,21 +126,29 @@ async function main() {
     // STEP 4: NFT Recipient Forwarding Address
     // ---------------------------------------------------------
     logger.separator();
-    const defaultRecipient = process.env.RECIPIENT_ADDRESS || '';
-    const { recipientInput } = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'recipientInput',
-        message: 'Recipient address to forward minted NFTs to (Leave blank to keep in minting wallets):',
-        default: defaultRecipient || undefined,
-        validate: input => {
-          if (!input || input.trim() === '') return true;
-          return ethers.isAddress(input.trim()) ? true : 'Invalid Ethereum address';
+    const envRecipient = (process.env.RECIPIENT_ADDRESS || '').trim();
+    const recipientPromptConfig = {
+      type: 'input',
+      name: 'recipientInput',
+      message: 'Recipient address to forward minted NFTs to (Press Enter to keep in minting wallets):',
+      validate: input => {
+        if (!input || !input.trim() || input.trim() === 'undefined' || input.trim().toLowerCase() === 'none') {
+          return true;
         }
+        return ethers.isAddress(input.trim()) ? true : 'Invalid Ethereum address (must start with 0x)';
       }
-    ]);
+    };
 
-    const recipientAddress = recipientInput ? recipientInput.trim() : null;
+    if (envRecipient && ethers.isAddress(envRecipient)) {
+      recipientPromptConfig.default = envRecipient;
+    }
+
+    const { recipientInput } = await inquirer.prompt([recipientPromptConfig]);
+    const rawRecipient = (recipientInput || '').trim();
+    const recipientAddress = (rawRecipient && rawRecipient !== 'undefined' && rawRecipient.toLowerCase() !== 'none' && ethers.isAddress(rawRecipient))
+      ? ethers.getAddress(rawRecipient)
+      : null;
+
     if (recipientAddress) {
       logger.success(`NFTs will be automatically forwarded to: ${recipientAddress}`);
     } else {
@@ -151,36 +159,54 @@ async function main() {
     // STEP 5: Collection Identifier (URL / Slug / Contract)
     // ---------------------------------------------------------
     logger.separator();
+    const defaultDemoContract = chainConfig.seadropAddress || '0x00005EA00Ac477B1030CE78506496e8C2dE24bf5';
     const { collectionInput } = await inquirer.prompt([
       {
         type: 'input',
         name: 'collectionInput',
-        message: 'OpenSea Collection URL, Slug, or NFT Contract Address:',
-        validate: input => (input.trim().length > 0 ? true : 'Collection identifier is required')
+        message: 'OpenSea Collection URL, Slug, or Contract Address (or type "demo" for test):',
+        default: 'demo',
+        validate: input => {
+          if (!input || !input.trim() || input.trim().toLowerCase() === 'demo' || input.trim().toLowerCase() === 'test') {
+            return true;
+          }
+          return input.trim().length > 0 ? true : 'Collection identifier is required';
+        }
       }
     ]);
 
-    const resolved = resolveCollection(collectionInput.trim());
-    let nftContractAddress = resolved.address;
-    let collectionSlug = resolved.slug;
+    const cleanInput = (collectionInput || 'demo').trim();
+    let nftContractAddress = null;
+    let collectionSlug = null;
 
-    // If slug provided but no contract address, attempt to resolve contract from slug
-    if (!nftContractAddress && collectionSlug) {
-      logger.info(`Resolving contract address for slug: "${collectionSlug}"...`);
-      nftContractAddress = await CollectionService.getContractFromSlug(collectionSlug);
-      if (nftContractAddress) {
-        logger.success(`Resolved Contract: ${nftContractAddress}`);
-      } else {
-        // Prompt for contract if slug couldn't be auto-resolved
-        const { manualContract } = await inquirer.prompt([
-          {
-            type: 'input',
-            name: 'manualContract',
-            message: 'Could not auto-resolve contract address from slug. Please enter 0x contract address directly:',
-            validate: input => (ethers.isAddress(input.trim()) ? true : 'Invalid contract address')
-          }
-        ]);
-        nftContractAddress = manualContract.trim();
+    if (cleanInput.toLowerCase() === 'demo' || cleanInput.toLowerCase() === 'test' || cleanInput === '') {
+      logger.info(`🧪 Using Demo Test Contract: ${defaultDemoContract}`);
+      nftContractAddress = defaultDemoContract;
+      collectionSlug = 'demo-testnet-drop';
+    } else {
+      const resolved = resolveCollection(cleanInput);
+      nftContractAddress = resolved.address;
+      collectionSlug = resolved.slug;
+
+      // If slug provided but no contract address, attempt to resolve contract from slug
+      if (!nftContractAddress && collectionSlug) {
+        logger.info(`Resolving contract address for slug: "${collectionSlug}"...`);
+        nftContractAddress = await CollectionService.getContractFromSlug(collectionSlug);
+        if (nftContractAddress) {
+          logger.success(`Resolved Contract: ${nftContractAddress}`);
+        } else {
+          // Prompt for contract if slug couldn't be auto-resolved
+          const { manualContract } = await inquirer.prompt([
+            {
+              type: 'input',
+              name: 'manualContract',
+              message: 'Could not auto-resolve contract address from slug. Please enter 0x contract address directly:',
+              default: defaultDemoContract,
+              validate: input => (ethers.isAddress(input.trim()) ? true : 'Invalid contract address')
+            }
+          ]);
+          nftContractAddress = manualContract.trim();
+        }
       }
     }
 

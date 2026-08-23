@@ -30,8 +30,11 @@ async function forwardNFTs(results, wallets, provider, recipientAddress, explore
 
   const forwardPromises = results.map(async (result) => {
     try {
-      const { receipt, wallet } = result;
+      const { receipt, address } = result;
       if (!receipt || !receipt.logs) return;
+
+      const wallet = wallets.find(w => w.address.toLowerCase() === (address || result.address || '').toLowerCase());
+      if (!wallet) return;
 
       const connectedWallet = wallet.connect ? wallet.connect(provider) : wallet;
 
