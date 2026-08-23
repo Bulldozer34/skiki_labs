@@ -1,4 +1,4 @@
-const { Interface, Contract } = require('ethers');
+const { Interface, Contract, ZeroAddress, getAddress } = require('ethers');
 
 /**
  * SeaDrop v1 / v2 minimal ABI for public drops
@@ -7,6 +7,7 @@ const SEADROP_ABI = [
   'function mintPublic(address nftContract, address feeRecipient, address minterIfNotPayer, uint256 quantity) external payable',
   'function getPublicDrop(address nftContract) external view returns (tuple(uint256 mintPrice, uint256 startTime, uint256 endTime, uint256 maxTotalMintableByWallet, uint256 feeBps, bool restrictFeeRecipients))',
   'function getCreatorPayoutAddress(address nftContract) external view returns (address)',
+  'function getAllowedFeeRecipients(address nftContract) external view returns (address[])',
   'function getAllowListMerkleRoot(address nftContract) external view returns (bytes32)'
 ];
 
@@ -28,15 +29,22 @@ const SEADROP_ADDRESSES = {
  * @param {ethers.Provider} provider 
  * @param {string} seadropAddress 
  * @param {string} nftContractAddress 
- * @returns {Promise<{mintPrice: bigint, startTime: bigint, endTime: bigint, maxMintable: bigint, feeRecipient: string}>}
+ * @returns {Promise<{mintPrice: bigint, startTime: bigint, endTime: bigint, maxMintable: bigint, feeRecipient: string, restrictFeeRecipients: boolean, allowedFeeRecipients: string[]}>}
  */
 async function getPublicDropParams(provider, seadropAddress, nftContractAddress) {
   const seadropContract = new Contract(seadropAddress, SEADROP_ABI, provider);
   
-  const [publicDrop, feeRecipient] = await Promise.all([
+  const [publicDrop, creatorPayoutAddress, allowedFeeRecipients] = await Promise.all([
     seadropContract.getPublicDrop(nftContractAddress),
-    seadropContract.getCreatorPayoutAddress(nftContractAddress).catch(() => '0x0000000000000000000000000000000000000000')
+    seadropContract.getCreatorPayoutAddress(nftContractAddress).catch(() => ZeroAddress),
+    seadropContract.getAllowedFeeRecipients(nftContractAddress).catch(() => [])
   ]);
+
+  const feeRecipientDetails = resolveMintFeeRecipient({
+    creatorPayoutAddress,
+    allowedFeeRecipients,
+    restrictFeeRecipients: publicDrop.restrictFeeRecipients
+  });
 
   return {
     mintPrice: publicDrop.mintPrice,
@@ -44,7 +52,56 @@ async function getPublicDropParams(provider, seadropAddress, nftContractAddress)
     endTime: publicDrop.endTime,
     maxMintable: publicDrop.maxTotalMintableByWallet,
     feeBps: publicDrop.feeBps,
-    feeRecipient
+    restrictFeeRecipients: publicDrop.restrictFeeRecipients,
+    allowedFeeRecipients: feeRecipientDetails.allowedFeeRecipients,
+    feeRecipient: feeRecipientDetails.feeRecipient,
+    feeRecipientSource: feeRecipientDetails.source
+  };
+}
+
+function normalizeAddressList(addresses) {
+  return (addresses || [])
+    .filter(address => typeof address === 'string' && address !== ZeroAddress)
+    .map(address => {
+      try {
+        return getAddress(address);
+      } catch (e) {
+        return null;
+      }
+    })
+    .filter(Boolean);
+}
+
+function resolveMintFeeRecipient({ creatorPayoutAddress, allowedFeeRecipients, restrictFeeRecipients }) {
+  const allowed = normalizeAddressList(allowedFeeRecipients);
+  const creator = creatorPayoutAddress && creatorPayoutAddress !== ZeroAddress
+    ? getAddress(creatorPayoutAddress)
+    : ZeroAddress;
+
+  if (restrictFeeRecipients) {
+    if (creator !== ZeroAddress && allowed.some(address => address.toLowerCase() === creator.toLowerCase())) {
+      return {
+        feeRecipient: creator,
+        allowedFeeRecipients: allowed,
+        source: 'creator_payout_allowed'
+      };
+    }
+
+    if (allowed.length > 0) {
+      return {
+        feeRecipient: allowed[0],
+        allowedFeeRecipients: allowed,
+        source: 'first_allowed_fee_recipient'
+      };
+    }
+
+    throw new Error('SeaDrop public mint restricts fee recipients, but no allowed fee recipient was found on-chain.');
+  }
+
+  return {
+    feeRecipient: creator !== ZeroAddress ? creator : (allowed[0] || ZeroAddress),
+    allowedFeeRecipients: allowed,
+    source: creator !== ZeroAddress ? 'creator_payout' : (allowed[0] ? 'first_allowed_fee_recipient' : 'zero_address')
   };
 }
 
@@ -70,5 +127,6 @@ module.exports = {
   SEADROP_ABI,
   SEADROP_ADDRESSES,
   getPublicDropParams,
-  encodeMintPublicCalldata
+  encodeMintPublicCalldata,
+  resolveMintFeeRecipient
 };

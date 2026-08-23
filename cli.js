@@ -372,6 +372,7 @@ async function main() {
       provider,
       rpcUrls,
       nftContractAddress,
+      collectionSlug,
       chain: chainConfig,
       quantity,
       gasSettings,

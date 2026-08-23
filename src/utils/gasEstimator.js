@@ -135,7 +135,70 @@ function formatGasEstimate(estimate) {
   return `Base: ${baseStr} gwei | Priority: ${priorityStr} gwei | Max: ${maxStr} gwei`;
 }
 
+function parseGweiOrDefault(value, fallbackGwei) {
+  const raw = value == null || value === '' ? fallbackGwei : value;
+  return ethers.parseUnits(String(raw), 'gwei');
+}
+
+/**
+ * Resolve gas fees using user-entered values as a floor and live estimates as an upside adjustment.
+ *
+ * @param {import('ethers').Provider} provider
+ * @param {{maxFeePerGas?: string|number, maxPriorityFeePerGas?: string|number}} gasSettings
+ * @param {'standard'|'fast'|'turbo'} [speedPreset='turbo']
+ * @returns {Promise<GasEstimate & {configured: GasEstimate, estimate: GasEstimate|null, source: string}>}
+ */
+async function resolveGasFees(provider, gasSettings = {}, speedPreset = 'turbo') {
+  const configured = {
+    maxFeePerGas: parseGweiOrDefault(gasSettings.maxFeePerGas, '25.0'),
+    maxPriorityFeePerGas: parseGweiOrDefault(gasSettings.maxPriorityFeePerGas, '1.5'),
+    baseFee: 0n,
+    estimatedGwei: String(gasSettings.maxFeePerGas || '25.0')
+  };
+
+  try {
+    const liveEstimate = await estimateGas(provider, speedPreset);
+    if (!liveEstimate) {
+      return { ...configured, configured, estimate: null, source: 'manual' };
+    }
+
+    const maxFeePerGas = liveEstimate.maxFeePerGas > configured.maxFeePerGas
+      ? liveEstimate.maxFeePerGas
+      : configured.maxFeePerGas;
+    const maxPriorityFeePerGas = liveEstimate.maxPriorityFeePerGas > configured.maxPriorityFeePerGas
+      ? liveEstimate.maxPriorityFeePerGas
+      : configured.maxPriorityFeePerGas;
+
+    return {
+      maxFeePerGas,
+      maxPriorityFeePerGas,
+      baseFee: liveEstimate.baseFee,
+      estimatedGwei: ethers.formatUnits(maxFeePerGas, 'gwei'),
+      configured,
+      estimate: liveEstimate,
+      source: 'manual_floor_plus_live'
+    };
+  } catch (error) {
+    return { ...configured, configured, estimate: null, source: 'manual' };
+  }
+}
+
+function formatGasSelection(gasFees) {
+  if (!gasFees) {
+    return 'Using manual gas settings';
+  }
+
+  const using = formatGasEstimate(gasFees);
+  if (!gasFees.estimate) {
+    return `Using manual: ${using}`;
+  }
+
+  return `Manual floor: ${formatGasEstimate(gasFees.configured)} | Live ${formatGasEstimate(gasFees.estimate)} | Using ${using}`;
+}
+
 module.exports = {
   estimateGas,
-  formatGasEstimate
+  formatGasEstimate,
+  resolveGasFees,
+  formatGasSelection
 };

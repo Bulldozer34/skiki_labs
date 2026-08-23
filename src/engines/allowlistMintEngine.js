@@ -1,6 +1,4 @@
-const axios = require('axios');
 const { ethers } = require('ethers');
-const fs = require('fs');
 const { getChainKey } = require('../utils/chains');
 const logger = require('../utils/logger');
 const Notifier = require('../utils/notifier');
@@ -9,146 +7,118 @@ const MultiRpcBroadcaster = require('./multiRpcBroadcaster');
 const PreflightSimulator = require('./preflightSimulator');
 const connectionManager = require('../services/connectionManager');
 const authService = require('../services/authService');
+const WalletService = require('../services/walletService');
 const { formatError } = require('../utils/errorTranslator');
 const { mintHistoryWriter } = require('../utils/asyncWriter');
-const { estimateGas, formatGasEstimate } = require('../utils/gasEstimator');
+const { resolveGasFees, formatGasSelection } = require('../utils/gasEstimator');
 
-/**
- * Build a sanitized batched GraphQL query with field aliases (SEC-02 Fix)
- */
-function buildBatchQuery(wallets, config) {
-  const { chain, quantity, nftContractAddress } = config;
-  
-  // 1. Strict address validation
-  if (!ethers.isAddress(nftContractAddress)) {
-    throw new Error(`Invalid NFT contract address format: ${nftContractAddress}`);
+function getOpenSeaApiKey() {
+  return (process.env.OPENSEA_API_KEY || process.env.OPENSEA_KEY || '').trim();
+}
+
+function getDropSlug(config) {
+  return (config.collectionSlug || config.slug || '').trim();
+}
+
+function normalizeTxValue(value) {
+  if (value == null || value === '') return '0';
+  return typeof value === 'number' ? String(value) : value;
+}
+
+function normalizeOpenSeaMintTransaction(payload) {
+  const candidates = [
+    payload,
+    payload?.transaction,
+    payload?.transactionData,
+    payload?.transaction_data,
+    payload?.transactionSubmissionData,
+    payload?.data,
+    payload?.data?.transaction,
+    payload?.data?.transactionData,
+    payload?.data?.transaction_data,
+    payload?.data?.transactionSubmissionData
+  ];
+
+  const tx = candidates.find(item => item && item.to && item.data);
+  if (!tx) {
+    throw new Error(`OpenSea mint response did not include transaction data: ${JSON.stringify(payload).slice(0, 500)}`);
   }
 
-  // 2. Strict chain identifier resolution
-  const chainIdentifier = getChainKey(chain);
-
-  // 3. Strict integer quantity and checksummed address
-  const safeQuantity = Math.max(1, Math.floor(Number(quantity) || 1));
-  const safeContract = ethers.getAddress(nftContractAddress).toLowerCase();
-
-  let query = 'query B {\n';
-  wallets.forEach((w, i) => {
-    const safeAddress = ethers.getAddress(w.address).toLowerCase();
-    query += `  w${i}: swap(
-    chain: ${chainIdentifier}
-    address: "${safeAddress}"
-    action: MINT
-    quantity: ${safeQuantity}
-    contractAddress: "${safeContract}"
-    fromAssets: []
-  ) {
-    ... on SwapActionTransaction {
-      transactionSubmissionData {
-        chainIdentifier
-        to
-        value
-        data
-      }
-    }
-    ... on SwapActionError {
-      __typename
-      message
-    }
-  }\n`;
-  });
-  query += '}';
-  return query;
+  return {
+    chainIdentifier: tx.chainIdentifier || tx.chain || payload?.chainIdentifier || payload?.chain || null,
+    to: tx.to,
+    value: normalizeTxValue(tx.value),
+    data: tx.data
+  };
 }
 
 /**
- * Fetch calldata in a single HTTP POST using GraphQL field aliasing
+ * Fetch ready-to-sign mint transaction data from OpenSea Drops REST API (v2)
  */
-async function fetchBatchCalldata(wallets, config, authHeaders) {
-  const query = buildBatchQuery(wallets, config);
-  const gqlUrl = process.env.OPENSEA_GQL_URL || 'https://gql.opensea.io/graphql/';
+async function fetchSingleCalldata(wallet, config, authHeaders) {
+  const { quantity } = config;
+  const apiKey = getOpenSeaApiKey();
+  const slug = getDropSlug(config);
 
-  const response = await connectionManager.axiosInstance.post(gqlUrl, { query }, {
-    headers: {
-      ...authHeaders,
-      'Content-Type': 'application/json'
-    },
+  if (!slug) {
+    throw new Error('Collection identifier is required to fetch drop mint data.');
+  }
+
+  const safeQuantity = Math.max(1, Math.floor(Number(quantity) || 1));
+  const baseUrl = (process.env.OPENSEA_API_URL || 'https://api.opensea.io').replace(/\/+$/, '');
+  const url = `${baseUrl}/api/v2/drops/${encodeURIComponent(slug)}/mint`;
+
+  const headers = {
+    'accept': 'application/json',
+    'content-type': 'application/json',
+    ...(authHeaders || {})
+  };
+
+  if (apiKey) {
+    headers['x-api-key'] = apiKey;
+  }
+
+  const res = await connectionManager.axiosInstance.post(url, {
+    minter: ethers.getAddress(wallet.address),
+    quantity: safeQuantity
+  }, {
+    headers,
     timeout: 8000
   });
 
-  const json = response.data;
+  return normalizeOpenSeaMintTransaction(res.data);
+}
+
+/**
+ * Fetch calldata concurrently for all session wallets
+ */
+async function fetchAllCalldata(wallets, config, authHeadersByAddress, fallbackAuthHeaders) {
   const calldataMap = new Map();
 
-  if (json.errors) {
-    logger.warn(`GraphQL Batch Notice: ${JSON.stringify(json.errors[0]?.message || json.errors)}`);
-  }
+  const settled = await Promise.allSettled(wallets.map(async (wallet) => {
+    try {
+      const headers = authHeadersByAddress.get(wallet.address.toLowerCase()) || fallbackAuthHeaders;
+      const data = await fetchSingleCalldata(wallet, config, headers);
+      return { wallet, data, error: null };
+    } catch (error) {
+      const apiMessage = error.response?.data?.message || error.response?.data?.detail || error.response?.data?.error;
+      const status = error.response?.status ? `HTTP ${error.response.status}: ` : '';
+      return { wallet, data: null, error: `${status}${apiMessage || error.message}` };
+    }
+  }));
 
-  if (json.data) {
-    wallets.forEach((w, i) => {
-      const result = json.data[`w${i}`];
-      if (result && result.transactionSubmissionData) {
-        calldataMap.set(w.address.toLowerCase(), result.transactionSubmissionData);
-      } else if (result && result.__typename === 'SwapActionError') {
-        logger.warn(`[${w.address.slice(0, 6)}...] Swap: ${result.message}`);
-      }
-    });
+  for (const result of settled) {
+    if (result.status !== 'fulfilled') continue;
+
+    const { wallet, data, error } = result.value;
+    if (data) {
+      calldataMap.set(wallet.address.toLowerCase(), data);
+    } else if (error) {
+      logger.warn(`[${wallet.address.slice(0, 6)}...] Calldata fetch: ${error}`);
+    }
   }
 
   return calldataMap;
-}
-
-/**
- * Fallback to fetch single calldata per wallet if batch aliasing is rejected
- */
-async function fetchSingleCalldata(wallet, config, authHeaders) {
-  const { chain, quantity, nftContractAddress } = config;
-  const chainIdentifier = getChainKey(chain);
-  const gqlUrl = process.env.OPENSEA_GQL_URL || 'https://gql.opensea.io/graphql/';
-
-  const query = `
-    query MintActionTimelineQuery($chain: ChainScalar!, $address: AddressScalar!, $action: ActionType!, $quantity: Int!, $nftContractAddress: AddressScalar!, $fromAssets: [AssetQuantityInput!]!) {
-      swap(
-        chain: $chain
-        address: $address
-        action: $action
-        quantity: $quantity
-        contractAddress: $nftContractAddress
-        fromAssets: $fromAssets
-      ) {
-        ... on SwapActionTransaction {
-          transactionSubmissionData {
-            chainIdentifier
-            to
-            value
-            data
-          }
-        }
-        ... on SwapActionError {
-          __typename
-          message
-        }
-      }
-    }
-  `;
-
-  const variables = {
-    chain: chainIdentifier,
-    address: ethers.getAddress(wallet.address).toLowerCase(),
-    action: 'MINT',
-    quantity: Math.max(1, Math.floor(Number(quantity) || 1)),
-    nftContractAddress: ethers.getAddress(nftContractAddress).toLowerCase(),
-    fromAssets: []
-  };
-
-  const res = await connectionManager.axiosInstance.post(gqlUrl, { query, variables }, {
-    headers: { ...authHeaders, 'Content-Type': 'application/json' },
-    timeout: 8000
-  });
-
-  const swap = res.data?.data?.swap;
-  if (swap && swap.transactionSubmissionData) {
-    return swap.transactionSubmissionData;
-  }
-  return null;
 }
 
 /**
@@ -158,11 +128,13 @@ async function runAllowlistMint(config) {
   const { wallets, provider, rpcUrls, nftContractAddress, chain, quantity, gasSettings, recipientAddress } = config;
   let { startTime } = config;
 
-  const explorerUrl = chain.explorerUrl || 'https://etherscan.io';
+  const explorerUrl = chain?.explorerUrl || 'https://etherscan.io';
+  const chainKey = getChainKey(chain);
 
   logger.separator();
-  logger.info(`Mode: OpenSea Allowlist / FCFS (Signed Mint)`);
+  logger.info(`Mode: OpenSea Allowlist / FCFS (Signed Mint via Drops API)`);
   logger.info(`NFT Contract: ${nftContractAddress}`);
+  logger.info(`Chain: ${chainKey}`);
   logger.info(`Wallets Count: ${wallets.length}`);
   logger.info(`Quantity per Wallet: ${quantity}`);
   logger.separator();
@@ -170,11 +142,16 @@ async function runAllowlistMint(config) {
   // 1. Authenticate all wallets with SIWE
   logger.info('Authenticating wallets with OpenSea SIWE...');
   await authService.authenticateAll(wallets);
-  
-  const authHeaders = authService.getAuthHeaders(wallets[0].address);
-  if (!authHeaders) {
-    throw new Error('Failed to obtain OpenSea session headers.');
+
+  const authHeadersByAddress = new Map();
+  for (const wallet of wallets) {
+    const headers = authService.getAuthHeaders(wallet.address);
+    if (headers) {
+      authHeadersByAddress.set(wallet.address.toLowerCase(), headers);
+    }
   }
+
+  const fallbackAuthHeaders = authHeadersByAddress.values().next().value || {};
 
   // Initialize Multi-RPC Broadcaster & Simulator
   const network = await provider.getNetwork();
@@ -182,11 +159,7 @@ async function runAllowlistMint(config) {
   const simulator = new PreflightSimulator(provider);
 
   // Pre-fetch nonces
-  let nonceMap = new Map();
-  for (const w of wallets) {
-    const n = await provider.getTransactionCount(w.address, 'pending');
-    nonceMap.set(w.address.toLowerCase(), n);
-  }
+  let nonceMap = await WalletService.prefetchNonces(wallets, provider);
 
   const now = Math.floor(Date.now() / 1000);
   let calldataMap = new Map();
@@ -198,64 +171,47 @@ async function runAllowlistMint(config) {
 
     // T-10s: Pre-fetch nonces
     if (secondsRemaining > 10) {
-      await logger.countdown(secondsRemaining - 10);
+      await logger.preciseCountdown(secondsRemaining - 10);
       logger.info('T-10s: Refreshing wallet nonces...');
-      for (const w of wallets) {
-        try {
-          const n = await provider.getTransactionCount(w.address, 'pending');
-          nonceMap.set(w.address.toLowerCase(), n);
-        } catch (e) {}
-      }
+      nonceMap = await WalletService.prefetchNonces(wallets, provider);
 
-      // T-5s: Connection warming across GraphQL and all RPCs
-      logger.info('T-5s: Pre-warming socket pool across OpenSea and RPC endpoints...');
-      await connectionManager.preWarmSockets(['https://gql.opensea.io/graphql/', ...broadcaster.rpcUrls]);
-      await logger.countdown(3.5);
+      // T-5s: Connection warming across OpenSea REST and all RPCs
+      logger.info('T-5s: Pre-warming socket pool across OpenSea API and RPC endpoints...');
+      await connectionManager.preWarmSockets(['https://api.opensea.io', ...broadcaster.rpcUrls]);
+      await logger.preciseCountdown(3.5);
 
-      // T-1.5s: Parallel Hammering OpenSea GraphQL with backoff for early calldata
-      logger.speed('T-1.5s: Hammering OpenSea GraphQL for allowlist calldata & signatures...');
+      // T-1.5s: Parallel hammering OpenSea Drops API for early calldata
+      logger.speed('T-1.5s: Requesting OpenSea drop calldata & signatures...');
       const hammerStart = Date.now();
       let retryDelay = 100;
       while (Date.now() - hammerStart < 4000) {
         try {
-          calldataMap = await fetchBatchCalldata(wallets, config, authHeaders);
+          calldataMap = await fetchAllCalldata(wallets, config, authHeadersByAddress, fallbackAuthHeaders);
           if (calldataMap.size > 0) {
             logger.success(`Early calldata acquired for ${calldataMap.size} wallet(s)!`);
             break;
           }
         } catch (err) {
-          // Keep hammering with bounded jitter backoff
           retryDelay = Math.min(250, retryDelay + 25);
         }
         await new Promise(r => setTimeout(r, retryDelay));
       }
     } else {
-      await logger.countdown(secondsRemaining);
+      await logger.preciseCountdown(secondsRemaining);
     }
   }
 
   // 3. Final calldata fetch if not already acquired
   if (calldataMap.size === 0) {
-    logger.info('Fetching mint calldata via GraphQL batch...');
-    try {
-      calldataMap = await fetchBatchCalldata(wallets, config, authHeaders);
-    } catch (err) {
-      logger.warn(`Batch query error (${err.message}). Falling back to individual requests...`);
-      await Promise.allSettled(wallets.map(async (w) => {
-        try {
-          const headers = authService.getAuthHeaders(w.address) || authHeaders;
-          const data = await fetchSingleCalldata(w, config, headers);
-          if (data) calldataMap.set(w.address.toLowerCase(), data);
-        } catch (e) {}
-      }));
-    }
+    logger.info('Fetching mint calldata via OpenSea Drops API...');
+    calldataMap = await fetchAllCalldata(wallets, config, authHeadersByAddress, fallbackAuthHeaders);
   }
 
   logger.info(`Valid calldata acquired for ${calldataMap.size}/${wallets.length} wallet(s).`);
 
   if (calldataMap.size === 0) {
-    logger.warn('Tip: If this is an OpenSea SeaDrop contract, try selecting "Public Mint (Direct SeaDrop Contract)" mode.');
-    throw new Error('Could not obtain calldata for any wallet. Mint may not be live, wallets may not be eligible, or OpenSea GraphQL signed minting is unavailable.');
+    logger.warn('Tip: If this is an OpenSea SeaDrop contract, select "Public Mint (Direct SeaDrop Contract)" mode to mint directly on-chain.');
+    throw new Error('Could not obtain calldata for any wallet. Check drop live status, wallet eligibility, or use Direct SeaDrop Mint.');
   }
 
   // 4. Pre-flight simulation on first valid calldata
@@ -275,20 +231,10 @@ async function runAllowlistMint(config) {
     }
   }
 
-  // Dynamic Gas Estimation (live mempool pricing)
-  let maxFeePerGasWei = ethers.parseUnits((gasSettings.maxFeePerGas || '25.0').toString(), 'gwei');
-  let maxPriorityFeePerGasWei = ethers.parseUnits((gasSettings.maxPriorityFeePerGas || '1.5').toString(), 'gwei');
-
-  try {
-    const gasEst = await estimateGas(provider, 'turbo');
-    if (gasEst) {
-      maxFeePerGasWei = gasEst.maxFeePerGas;
-      maxPriorityFeePerGasWei = gasEst.maxPriorityFeePerGas;
-      logger.gasEstimate(formatGasEstimate(gasEst));
-    }
-  } catch (e) {
-    // Fall back to config gas
-  }
+  const gasFees = await resolveGasFees(provider, gasSettings, 'turbo');
+  const maxFeePerGasWei = gasFees.maxFeePerGas;
+  const maxPriorityFeePerGasWei = gasFees.maxPriorityFeePerGas;
+  logger.gasEstimate(formatGasSelection(gasFees));
 
   // 5. Pre-sign and Parallel Multi-RPC Broadcast
   logger.speed(`>>> FIRE! Broadcasting across ${broadcaster.rpcUrls.length} RPC node(s) <<<`);
@@ -314,7 +260,9 @@ async function runAllowlistMint(config) {
 
     const walletStartMs = Date.now();
     try {
-      const nonce = nonceMap.get(wallet.address.toLowerCase()) ?? await provider.getTransactionCount(wallet.address, 'pending');
+      const nonce = WalletService.consumeNonce(wallet.address)
+        ?? nonceMap.get(wallet.address.toLowerCase())
+        ?? await provider.getTransactionCount(wallet.address, 'pending');
 
       const tx = {
         to: calldata.to,

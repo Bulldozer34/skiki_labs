@@ -122,6 +122,45 @@ const logger = {
   },
 
   /**
+   * Deadline-based countdown that supports sub-second waits without overshooting.
+   */
+  preciseCountdown(seconds) {
+    return new Promise(resolve => {
+      const totalMs = Math.max(0, Math.ceil(Number(seconds || 0) * 1000));
+      if (!Number.isFinite(totalMs) || totalMs <= 0) {
+        process.stdout.write('\r\n');
+        resolve();
+        return;
+      }
+
+      const deadline = Date.now() + totalMs;
+
+      const tick = () => {
+        const remainingMs = Math.max(0, deadline - Date.now());
+        const display = remainingMs <= 10000
+          ? (remainingMs / 1000).toFixed(1)
+          : Math.ceil(remainingMs / 1000).toString();
+
+        process.stdout.write(`\r${chalk.blue('[timer]')} Starting in ${chalk.yellow(display)} seconds...  `);
+
+        if (remainingMs <= 0) {
+          process.stdout.write('\r\n');
+          resolve();
+          return;
+        }
+
+        setTimeout(tick, Math.min(remainingMs, remainingMs <= 10000 ? 100 : 1000));
+      };
+
+      tick();
+    });
+  },
+
+  sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, Math.max(0, Number(ms) || 0)));
+  },
+
+  /**
    * Displays a live-updating minting progress bar
    * @param {number} completed Number of completed mints
    * @param {number} total Total number of mints
