@@ -9,23 +9,27 @@ const { ethers } = require('ethers');
  */
 class ConnectionManager {
   constructor() {
-    // 1. Configure Persistent Keep-Alive Agents
+    // 1. Configure Persistent Keep-Alive Agents with TCP_NODELAY & IPv4 Fast-Path
     this.httpsAgent = new https.Agent({
       keepAlive: true,
-      keepAliveMsecs: 60000,
-      maxSockets: 100,       // Increased from 50
-      maxFreeSockets: 40,    // Increased from 20
+      keepAliveMsecs: 120000,
+      maxSockets: 200,
+      maxFreeSockets: 100,
       timeout: 15000,
-      scheduling: 'lifo' // Last-In First-Out reuses the hottest sockets first
+      scheduling: 'lifo', // Last-In First-Out reuses the hottest sockets first
+      noDelay: true,      // Disable Nagle algorithm (TCP_NODELAY) for instant packet dispatch
+      family: 4           // Force IPv4 to prevent 250ms+ IPv6 fallback stalls on Windows
     });
 
     this.httpAgent = new http.Agent({
       keepAlive: true,
-      keepAliveMsecs: 60000,
-      maxSockets: 100,
-      maxFreeSockets: 40,
+      keepAliveMsecs: 120000,
+      maxSockets: 200,
+      maxFreeSockets: 100,
       timeout: 15000,
-      scheduling: 'lifo'
+      scheduling: 'lifo',
+      noDelay: true,
+      family: 4
     });
 
     // 2. Pre-configured Axios instance with persistent sockets
@@ -34,7 +38,8 @@ class ConnectionManager {
       httpAgent: this.httpAgent,
       timeout: 10000,
       headers: {
-        'Connection': 'keep-alive'
+        'Connection': 'keep-alive',
+        'Content-Type': 'application/json'
       }
     });
 
@@ -67,6 +72,65 @@ class ConnectionManager {
     const provider = new ethers.JsonRpcProvider(fetchReq, chainId || undefined, { staticNetwork: true });
     this._providerCache.set(cacheKey, provider);
     return provider;
+  }
+
+  /**
+   * High-speed direct raw JSON-RPC eth_sendRawTransaction broadcast over keep-alive socket
+   * Bypasses ethers abstraction layer to achieve < 50ms broadcast latency
+   * @param {string} rpcUrl 
+   * @param {string} signedTx 
+   * @param {number} [timeoutMs=8000] 
+   * @returns {Promise<string>} Transaction hash
+   */
+  async sendRawTransactionRaw(rpcUrl, signedTx, timeoutMs = 8000) {
+    const res = await this.axiosInstance.post(rpcUrl, {
+      jsonrpc: '2.0',
+      id: Math.floor(Math.random() * 1000000),
+      method: 'eth_sendRawTransaction',
+      params: [signedTx]
+    }, {
+      timeout: timeoutMs
+    });
+
+    if (res.data && res.data.result) {
+      return res.data.result;
+    }
+
+    if (res.data && res.data.error) {
+      const err = new Error(res.data.error.message || JSON.stringify(res.data.error));
+      err.code = res.data.error.code;
+      err.data = res.data.error.data;
+      throw err;
+    }
+
+    throw new Error(`Invalid JSON-RPC response from ${rpcUrl}`);
+  }
+
+  /**
+   * Ultra-fast raw JSON-RPC receipt query bypassing ethers wrapper
+   * @param {string} rpcUrl 
+   * @param {string} txHash 
+   * @param {number} [timeoutMs=3000] 
+   * @returns {Promise<object|null>}
+   */
+  async getRawReceipt(rpcUrl, txHash, timeoutMs = 3000) {
+    try {
+      const res = await this.axiosInstance.post(rpcUrl, {
+        jsonrpc: '2.0',
+        id: Math.floor(Math.random() * 1000000),
+        method: 'eth_getTransactionReceipt',
+        params: [txHash]
+      }, {
+        timeout: timeoutMs
+      });
+
+      if (res.data && res.data.result) {
+        return res.data.result;
+      }
+      return null;
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -135,19 +199,20 @@ class ConnectionManager {
   }
 
   /**
-   * Pre-warm connections against GraphQL & RPC endpoints at T-5s
+   * Pre-warm connections against OpenSea API & RPC endpoints immediately
+   * Pre-establishes TCP + TLS connections so first broadcast has 0ms connection latency
    * @param {string[]} endpoints 
    */
   async preWarmSockets(endpoints) {
     const warmPromises = endpoints.filter(Boolean).map(async (url) => {
       try {
-        if (url.includes('graphql')) {
+        if (url.includes('opensea.io')) {
           await this.axiosInstance.head(url).catch(() => {});
         } else {
           await this.axiosInstance.post(url, {
             jsonrpc: '2.0',
             id: 1,
-            method: 'net_version',
+            method: 'eth_blockNumber',
             params: []
           }).catch(() => {});
         }

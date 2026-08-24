@@ -10,6 +10,7 @@ const WalletService = require('./src/services/walletService');
 const CollectionService = require('./src/services/collectionService');
 const authService = require('./src/services/authService');
 const Scheduler = require('./src/scheduler');
+const connectionManager = require('./src/services/connectionManager');
 const { runPublicMint } = require('./src/engines/publicMintEngine');
 const { runAllowlistMint } = require('./src/engines/allowlistMintEngine');
 
@@ -97,7 +98,7 @@ async function main() {
     }
 
     logger.info(`Connecting to RPC: ${rpcUrl}`);
-    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    const provider = connectionManager.createEthersProvider(rpcUrl, chainConfig.chainId);
 
     // Verify RPC Connection
     try {

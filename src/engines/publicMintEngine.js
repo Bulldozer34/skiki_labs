@@ -37,6 +37,9 @@ async function runPublicMint(config) {
   const broadcaster = new MultiRpcBroadcaster(rpcUrls || [provider._getConnection ? provider._getConnection().url : config.rpcUrl], Number(network.chainId));
   const simulator = new PreflightSimulator(provider);
 
+  // Pre-warm sockets immediately across all RPCs (non-blocking)
+  connectionManager.preWarmSockets(broadcaster.rpcUrls).catch(() => {});
+
   logger.info('Reading public drop parameters from SeaDrop contract...');
   const dropParams = await getPublicDropParams(provider, seadropAddress, nftContractAddress);
   
@@ -139,7 +142,7 @@ async function runPublicMint(config) {
           to: seadropAddress,
           data: validPrepared[0].rawTxObj.data,
           value: totalCostPerWalletWei
-        });
+        }, true);
         if (!sim.success) {
           logger.warn(`Pre-flight simulation notice: ${sim.revertReason}`);
         } else {
@@ -151,6 +154,9 @@ async function runPublicMint(config) {
       await logger.preciseCountdown(secondsRemaining);
     }
   }
+
+  // Re-warm sockets right before firing
+  await connectionManager.preWarmSockets(broadcaster.rpcUrls);
 
   // Multi-RPC Simultaneous Broadcast Racing
   logger.speed(`>>> FIRE! Multi-RPC Broadcasting ${validPrepared.length} transactions across ${broadcaster.rpcUrls.length} node(s) <<<`);

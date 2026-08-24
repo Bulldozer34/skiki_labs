@@ -27,9 +27,10 @@ class PreflightSimulator {
   /**
    * Simulate transaction execution before sending (0 gas cost)
    * @param {object} tx { from, to, data, value }
+   * @param {boolean} [skipGasEstimate=false] If true, skips estimateGas to save 1 RPC round trip
    * @returns {Promise<{ success: boolean, revertReason: string|null, estimatedGas: bigint|null }>}
    */
-  async simulate(tx) {
+  async simulate(tx, skipGasEstimate = false) {
     try {
       const resultData = await this.provider.call({
         from: tx.from,
@@ -38,12 +39,15 @@ class PreflightSimulator {
         value: tx.value || 0n
       });
 
-      const estimatedGas = await this.provider.estimateGas({
-        from: tx.from,
-        to: tx.to,
-        data: tx.data,
-        value: tx.value || 0n
-      }).catch(() => null);
+      let estimatedGas = null;
+      if (!skipGasEstimate) {
+        estimatedGas = await this.provider.estimateGas({
+          from: tx.from,
+          to: tx.to,
+          data: tx.data,
+          value: tx.value || 0n
+        }).catch(() => null);
+      }
 
       return {
         success: true,

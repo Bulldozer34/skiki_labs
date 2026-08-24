@@ -139,7 +139,11 @@ async function runAllowlistMint(config) {
   logger.info(`Quantity per Wallet: ${quantity}`);
   logger.separator();
 
-  // 1. Authenticate all wallets with SIWE
+  // 1. Pre-warm sockets immediately across OpenSea API and all RPCs (non-blocking)
+  const initialEndpoints = ['https://api.opensea.io', ...(rpcUrls || [config.rpcUrl])];
+  connectionManager.preWarmSockets(initialEndpoints).catch(() => {});
+
+  // Authenticate all wallets with SIWE
   logger.info('Authenticating wallets with OpenSea SIWE...');
   await authService.authenticateAll(wallets);
 
@@ -214,7 +218,7 @@ async function runAllowlistMint(config) {
     throw new Error('Could not obtain calldata for any wallet. Check drop live status, wallet eligibility, or use Direct SeaDrop Mint.');
   }
 
-  // 4. Pre-flight simulation on first valid calldata
+  // 4. Pre-flight simulation on first valid calldata (skipping estimateGas to save 1 RPC round trip)
   const firstWalletAddr = Array.from(calldataMap.keys())[0];
   const firstCalldata = calldataMap.get(firstWalletAddr);
   if (firstCalldata) {
@@ -223,7 +227,7 @@ async function runAllowlistMint(config) {
       to: firstCalldata.to,
       data: firstCalldata.data,
       value: firstCalldata.value ? BigInt(firstCalldata.value) : 0n
-    });
+    }, true);
     if (!sim.success) {
       logger.warn(`Simulation check: ${sim.revertReason}`);
     } else {
@@ -236,29 +240,13 @@ async function runAllowlistMint(config) {
   const maxPriorityFeePerGasWei = gasFees.maxPriorityFeePerGas;
   logger.gasEstimate(formatGasSelection(gasFees));
 
-  // 5. Pre-sign and Parallel Multi-RPC Broadcast
-  logger.speed(`>>> FIRE! Broadcasting across ${broadcaster.rpcUrls.length} RPC node(s) <<<`);
-  const startTimeMs = Date.now();
-  const totalWallets = wallets.length;
-  let completedCount = 0;
-  let successCount = 0;
-  let failCount = 0;
-
-  const txPromises = wallets.map(async (wallet) => {
+  // 5. Pre-sign raw transactions offline for 0ms CPU latency at broadcast time
+  const preparedTxs = await Promise.all(wallets.map(async (wallet) => {
     const calldata = calldataMap.get(wallet.address.toLowerCase());
     if (!calldata) {
-      completedCount++;
-      failCount++;
-      logger.mintProgress(completedCount, totalWallets, successCount, failCount);
-      return {
-        address: wallet.address,
-        status: 'SKIPPED',
-        txHash: null,
-        details: 'Not eligible / No calldata'
-      };
+      return { wallet, signedTx: null, error: 'Not eligible / No calldata' };
     }
 
-    const walletStartMs = Date.now();
     try {
       const nonce = WalletService.consumeNonce(wallet.address)
         ?? nonceMap.get(wallet.address.toLowerCase())
@@ -277,6 +265,38 @@ async function runAllowlistMint(config) {
       };
 
       const signedTx = await wallet.signTransaction(tx);
+      return { wallet, signedTx, error: null };
+    } catch (err) {
+      return { wallet, signedTx: null, error: err.message };
+    }
+  }));
+
+  // Re-warm sockets right before firing to ensure TCP/TLS is hot
+  await connectionManager.preWarmSockets(broadcaster.rpcUrls);
+
+  // 6. Pre-sign and Parallel Multi-RPC Broadcast
+  logger.speed(`>>> FIRE! Broadcasting across ${broadcaster.rpcUrls.length} RPC node(s) <<<`);
+  const startTimeMs = Date.now();
+  const totalWallets = wallets.length;
+  let completedCount = 0;
+  let successCount = 0;
+  let failCount = 0;
+
+  const txPromises = preparedTxs.map(async ({ wallet, signedTx, error }) => {
+    if (!signedTx) {
+      completedCount++;
+      failCount++;
+      logger.mintProgress(completedCount, totalWallets, successCount, failCount);
+      return {
+        address: wallet.address,
+        status: 'SKIPPED',
+        txHash: null,
+        details: error || 'Not eligible / No calldata'
+      };
+    }
+
+    const walletStartMs = Date.now();
+    try {
       const broadcastResult = await broadcaster.broadcastFastest(signedTx);
       logger.walletLine(wallet.address, 'Sent', `Fastest: ${broadcastResult.fastestRpc} (${broadcastResult.durationMs}ms)`);
 

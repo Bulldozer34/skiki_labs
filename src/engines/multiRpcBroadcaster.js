@@ -49,6 +49,7 @@ class MultiRpcBroadcaster {
 
   /**
    * Concurrently broadcast a raw signed transaction across all configured RPCs
+   * Uses high-speed raw JSON-RPC over pre-warmed sockets with fallback to ethers provider
    * @param {string} signedTx Pre-signed raw transaction bytes (0x...)
    * @returns {Promise<{ txHash: string, fastestRpc: string, durationMs: number }>}
    */
@@ -56,13 +57,25 @@ class MultiRpcBroadcaster {
     const startTime = Date.now();
     const computedTxHash = ethers.keccak256(signedTx);
 
-    const broadcastPromises = this.providers.map(async (provider, index) => {
-      const url = this.rpcUrls[index];
+    const broadcastPromises = this.rpcUrls.map(async (url, index) => {
+      const provider = this.providers[index];
       try {
-        const txResponse = await provider.broadcastTransaction(signedTx);
+        // Fast path: Direct raw JSON-RPC over persistent TCP_NODELAY socket
+        let txHash;
+        try {
+          txHash = await connectionManager.sendRawTransactionRaw(url, signedTx, 6000);
+        } catch (rawErr) {
+          if (MultiRpcBroadcaster.isBenignDuplicateError(rawErr.message)) {
+            return { url, txHash: computedTxHash, status: 'ALREADY_PROPAGATED' };
+          }
+          // Fallback path: standard ethers provider broadcast
+          const txResponse = await provider.broadcastTransaction(signedTx);
+          txHash = txResponse.hash;
+        }
+
         return {
           url,
-          txHash: txResponse.hash,
+          txHash: txHash || computedTxHash,
           status: 'ACCEPTED'
         };
       } catch (err) {
@@ -90,14 +103,14 @@ class MultiRpcBroadcaster {
 
   /**
    * Race multiple providers to get transaction receipt confirmation with minimum latency
-   * Uses WebSocket push-based listening when available, with HTTP polling as fallback
+   * Uses WebSocket push-based listening when available, with 40ms HTTP polling as fallback
    * @param {string} txHash 
    * @param {number} confirmations 
    * @param {number} timeoutMs 
    * @returns {Promise<{ receipt: ethers.TransactionReceipt, fastProvider: string }>}
    */
   async waitForReceiptFastest(txHash, confirmations = 1, timeoutMs = 60000) {
-    const pollInterval = 150; // Reduced from 350ms for faster detection
+    const pollInterval = 40; // Ultra-fast 40ms interval for near-instant block pickup
     const deadline = Date.now() + timeoutMs;
 
     return new Promise((resolve, reject) => {
@@ -115,7 +128,7 @@ class MultiRpcBroadcaster {
           .catch(() => {}); // WS errors are non-fatal; HTTP polling continues
       }
 
-      // Strategy 2: HTTP polling across all providers (fallback / parallel race)
+      // Strategy 2: High-frequency HTTP polling across all providers (fallback / parallel race)
       const checkReceipt = async (provider, url) => {
         while (!resolved && Date.now() < deadline) {
           try {
