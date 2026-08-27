@@ -1,5 +1,7 @@
 const inquirer = require('inquirer');
 const { ethers } = require('ethers');
+const fs = require('fs');
+const path = require('path');
 const logger = require('../utils/logger');
 
 /**
@@ -11,10 +13,55 @@ const WalletService = {
   _nonceCache: new Map(),
 
   /**
-   * Prompt user for private keys (supports single key, one-by-one, or multi-line paste)
+   * Prompt user for private keys — paste manually or load from .txt file
    * @returns {Promise<ethers.Wallet[]>}
    */
   async promptWalletKeys() {
+    const { keySource } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'keySource',
+        message: 'How would you like to load private keys?',
+        choices: [
+          { name: '📋 Paste keys manually (one at a time)', value: 'PASTE' },
+          { name: '📁 Load from .txt file', value: 'FILE' }
+        ]
+      }
+    ]);
+
+    if (keySource === 'FILE') {
+      return await this._promptFileLoad();
+    }
+
+    return await this._promptManualPaste();
+  },
+
+  /**
+   * Prompt for .txt file path and load keys from it
+   * @returns {Promise<ethers.Wallet[]>}
+   */
+  async _promptFileLoad() {
+    const { filePath } = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'filePath',
+        message: 'Path to .txt file (one private key per line):',
+        validate: input => {
+          const resolved = path.resolve(input.trim());
+          if (!fs.existsSync(resolved)) return `File not found: ${resolved}`;
+          return true;
+        }
+      }
+    ]);
+
+    return this.loadFromFile(filePath.trim());
+  },
+
+  /**
+   * Original manual paste flow
+   * @returns {Promise<ethers.Wallet[]>}
+   */
+  async _promptManualPaste() {
     const wallets = [];
     logger.info('Paste your private key(s). You can paste one per line or multiple lines.');
     logger.info('Press Enter on a blank line when finished.');
@@ -65,6 +112,100 @@ const WalletService = {
     }
 
     return wallets;
+  },
+
+  /**
+   * Load private keys from a .txt file (one key per line)
+   * Skips blank lines and lines starting with #
+   * @param {string} filePath
+   * @returns {ethers.Wallet[]}
+   */
+  loadFromFile(filePath) {
+    const resolved = path.resolve(filePath);
+    const content = fs.readFileSync(resolved, 'utf-8');
+    const lines = content.split(/[\r\n]+/).map(s => s.trim()).filter(Boolean);
+
+    const wallets = [];
+    let lineNum = 0;
+
+    for (const line of lines) {
+      lineNum++;
+
+      // Skip comments
+      if (line.startsWith('#') || line.startsWith('//')) continue;
+
+      let cleanKey = line;
+      if (!cleanKey.startsWith('0x')) {
+        cleanKey = '0x' + cleanKey;
+      }
+
+      try {
+        const wallet = new ethers.Wallet(cleanKey);
+        if (!wallets.some(w => w.address.toLowerCase() === wallet.address.toLowerCase())) {
+          logger.success(`[Wallet #${wallets.length + 1}] ${wallet.address}`);
+          wallets.push(wallet);
+        }
+      } catch (err) {
+        logger.error(`Line ${lineNum}: Invalid key format (${err.message})`);
+      }
+    }
+
+    if (wallets.length === 0) {
+      logger.warn('No valid wallets found in file.');
+    } else {
+      logger.success(`Loaded ${wallets.length} wallet(s) from ${path.basename(resolved)}`);
+    }
+
+    return wallets;
+  },
+
+  /**
+   * Generate N random Ethereum wallets
+   * @param {number} count - Number of wallets to generate
+   * @returns {{ wallets: ethers.Wallet[], entries: Array<{index: number, address: string, privateKey: string}> }}
+   */
+  generateWallets(count) {
+    const wallets = [];
+    const entries = [];
+
+    for (let i = 0; i < count; i++) {
+      const wallet = ethers.Wallet.createRandom();
+      wallets.push(wallet);
+      entries.push({
+        index: i + 1,
+        address: wallet.address,
+        privateKey: wallet.privateKey
+      });
+    }
+
+    return { wallets, entries };
+  },
+
+  /**
+   * Save generated wallet keys to a .txt file
+   * @param {Array<{address: string, privateKey: string}>} entries
+   * @param {string} [outputDir] - Directory to save in (defaults to cwd)
+   * @returns {string} Path to saved file
+   */
+  saveWalletsToFile(entries, outputDir) {
+    const timestamp = new Date().toISOString().replace(/[:\-T]/g, '').slice(0, 14);
+    const filename = `wallets_${timestamp}.txt`;
+    const dir = outputDir || process.cwd();
+    const filePath = path.join(dir, filename);
+
+    const lines = [
+      '# Generated Wallets — NFT Mint Bot',
+      `# Created: ${new Date().toLocaleString()}`,
+      `# Count: ${entries.length}`,
+      '#',
+      '# One private key per line. Use with: node cli.js → Load from .txt file',
+      '#',
+      ...entries.map(e => e.privateKey),
+      ''
+    ];
+
+    fs.writeFileSync(filePath, lines.join('\n'), 'utf-8');
+    return filePath;
   },
 
   /**

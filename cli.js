@@ -13,6 +13,7 @@ const Scheduler = require('./src/scheduler');
 const connectionManager = require('./src/services/connectionManager');
 const { runPublicMint } = require('./src/engines/publicMintEngine');
 const { runAllowlistMint } = require('./src/engines/allowlistMintEngine');
+const { checkAllWallets } = require('./src/engines/eligibilityChecker');
 
 async function main() {
   console.clear();
@@ -398,4 +399,195 @@ async function main() {
   }
 }
 
-main();
+/**
+ * Eligibility Pre-Check Mode (--check flag)
+ * Mini wizard: chain, keys, slug → check eligibility → print table → exit
+ */
+async function checkEligibility() {
+  console.clear();
+  logger.banner();
+  logger.info('🔍 Eligibility Pre-Check Mode');
+  logger.separator();
+
+  try {
+    // 1. Select Chain & RPC
+    const chainChoices = getChainChoices();
+    chainChoices.push({ name: '🔧 Custom EVM RPC Endpoint', value: 'CUSTOM' });
+
+    const { selectedChain } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'selectedChain',
+        message: 'Select Chain:',
+        choices: chainChoices
+      }
+    ]);
+
+    let rpcUrl = '';
+    let chainConfig = selectedChain;
+
+    if (selectedChain === 'CUSTOM') {
+      const { customRpc } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'customRpc',
+          message: 'Enter RPC URL:',
+          validate: input => (input.trim().length > 0 ? true : 'RPC URL is required')
+        }
+      ]);
+      rpcUrl = customRpc.trim();
+      chainConfig = { name: 'Custom', chainId: 8453, defaultRpc: rpcUrl };
+    } else {
+      const defaultChainRpc = selectedChain.alchemyPrefix && process.env.ALCHEMY_KEY
+        ? expandAlchemyKey(process.env.ALCHEMY_KEY, selectedChain)
+        : (selectedChain.defaultRpc || process.env.DEFAULT_RPC_URL);
+
+      const { rpcInput } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'rpcInput',
+          message: `RPC Endpoint for ${selectedChain.name} (Press Enter to use default):`,
+          default: defaultChainRpc
+        }
+      ]);
+
+      rpcUrl = expandAlchemyKey(rpcInput.trim(), selectedChain);
+    }
+
+    // 2. Private Keys
+    logger.separator();
+    const wallets = await WalletService.promptWalletKeys();
+
+    if (wallets.length === 0) {
+      logger.error('At least one private key is required. Exiting.');
+      process.exit(1);
+    }
+
+    // 3. Collection Slug
+    logger.separator();
+    const { collectionInput } = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'collectionInput',
+        message: 'OpenSea Collection URL, Slug, or Contract Address:',
+        validate: input => (input.trim().length > 0 ? true : 'Collection identifier is required')
+      }
+    ]);
+
+    const resolved = resolveCollection(collectionInput.trim());
+    let collectionSlug = resolved.slug;
+
+    if (!collectionSlug) {
+      // If user pasted a contract address, use it as the slug fallback
+      collectionSlug = resolved.address || collectionInput.trim();
+    }
+
+    // 4. Optional: quantity
+    const { quantity } = await inquirer.prompt([
+      {
+        type: 'number',
+        name: 'quantity',
+        message: 'Quantity to check per wallet:',
+        default: 1,
+        validate: val => (val > 0 ? true : 'Quantity must be greater than 0')
+      }
+    ]);
+
+    // 5. Run eligibility check
+    await checkAllWallets({
+      wallets,
+      collectionSlug,
+      quantity
+    });
+
+    process.exit(0);
+  } catch (err) {
+    logger.error(`Check failed: ${err.message}`);
+    console.error(err);
+    process.exit(1);
+  }
+}
+
+/**
+ * Wallet Generator Mode (--generate flag)
+ * Generates N random Ethereum wallets, displays them, and saves to .txt
+ */
+async function generateWalletsMode() {
+  console.clear();
+  logger.banner();
+  logger.info('🔑 Wallet Generator Mode');
+  logger.separator();
+
+  try {
+    // Check if count was passed as CLI arg (e.g. --generate 5)
+    const rawArgs = process.argv.slice(2);
+    const genIndex = rawArgs.findIndex(a => ['--generate', '-g', 'generate'].includes(a.toLowerCase()));
+    let defaultCount = 1;
+    if (genIndex >= 0 && rawArgs[genIndex + 1] && /^\d+$/.test(rawArgs[genIndex + 1])) {
+      defaultCount = parseInt(rawArgs[genIndex + 1]);
+    }
+
+    const { count } = await inquirer.prompt([
+      {
+        type: 'number',
+        name: 'count',
+        message: 'How many wallets to generate?',
+        default: defaultCount,
+        validate: val => (val > 0 && val <= 100 ? true : 'Enter a number between 1 and 100')
+      }
+    ]);
+
+    logger.info(`Generating ${count} wallet(s)...`);
+    const { entries } = WalletService.generateWallets(count);
+
+    // Display table
+    const chalk = require('chalk');
+    const Table = require('cli-table3');
+    const table = new Table({
+      head: [
+        chalk.white.bold('#'),
+        chalk.white.bold('Address'),
+        chalk.white.bold('Private Key')
+      ],
+      colWidths: [5, 46, 70],
+      style: { head: [], border: [] }
+    });
+
+    for (const e of entries) {
+      table.push([e.index, e.address, e.privateKey]);
+    }
+
+    console.log('');
+    console.log(table.toString());
+    console.log('');
+
+    // Save to file
+    const savedPath = WalletService.saveWalletsToFile(entries);
+    logger.success(`Saved to: ${savedPath}`);
+    logger.warn('⚠️  Back up this file immediately. Lost keys = lost wallets forever.');
+    logger.separator();
+
+    // Show addresses-only summary for easy copying
+    logger.info('Addresses (for funding):');
+    for (const e of entries) {
+      console.log(`  ${e.address}`);
+    }
+    logger.separator();
+
+    process.exit(0);
+  } catch (err) {
+    logger.error(`Generation failed: ${err.message}`);
+    console.error(err);
+    process.exit(1);
+  }
+}
+
+// Route: --check, --generate, or default mint
+const args = process.argv.slice(2).map(a => a.toLowerCase());
+if (args.includes('--check') || args.includes('-c') || args.includes('check')) {
+  checkEligibility();
+} else if (args.includes('--generate') || args.includes('-g') || args.includes('generate')) {
+  generateWalletsMode();
+} else {
+  main();
+}

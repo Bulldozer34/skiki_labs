@@ -410,4 +410,4 @@ async function runAllowlistMint(config) {
   return results;
 }
 
-module.exports = { runAllowlistMint };
+module.exports = { runAllowlistMint, fetchSingleCalldata, normalizeOpenSeaMintTransaction };
