@@ -4,6 +4,7 @@
 !.env.example
 wallets.env
 wallets.txt
+wallets_*.txt
 *.key
 *.pem
 *.p12
