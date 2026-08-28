@@ -55,7 +55,7 @@ function normalizeOpenSeaMintTransaction(payload) {
 /**
  * Fetch ready-to-sign mint transaction data from OpenSea Drops REST API (v2)
  */
-async function fetchSingleCalldata(wallet, config, authHeaders) {
+async function fetchSingleCalldata(wallet, config, authHeaders, requestTimeout = 8000) {
   const { quantity } = config;
   const apiKey = getOpenSeaApiKey();
   const slug = getDropSlug(config);
@@ -83,7 +83,7 @@ async function fetchSingleCalldata(wallet, config, authHeaders) {
     quantity: safeQuantity
   }, {
     headers,
-    timeout: 8000
+    timeout: requestTimeout
   });
 
   return normalizeOpenSeaMintTransaction(res.data);
@@ -92,13 +92,13 @@ async function fetchSingleCalldata(wallet, config, authHeaders) {
 /**
  * Fetch calldata concurrently for all session wallets
  */
-async function fetchAllCalldata(wallets, config, authHeadersByAddress, fallbackAuthHeaders) {
+async function fetchAllCalldata(wallets, config, authHeadersByAddress, fallbackAuthHeaders, requestTimeout = 8000) {
   const calldataMap = new Map();
 
   const settled = await Promise.allSettled(wallets.map(async (wallet) => {
     try {
       const headers = authHeadersByAddress.get(wallet.address.toLowerCase()) || fallbackAuthHeaders;
-      const data = await fetchSingleCalldata(wallet, config, headers);
+      const data = await fetchSingleCalldata(wallet, config, headers, requestTimeout);
       return { wallet, data, error: null };
     } catch (error) {
       const apiMessage = error.response?.data?.message || error.response?.data?.detail || error.response?.data?.error;
@@ -165,47 +165,63 @@ async function runAllowlistMint(config) {
   // Pre-fetch nonces
   let nonceMap = await WalletService.prefetchNonces(wallets, provider);
 
-  const now = Math.floor(Date.now() / 1000);
   let calldataMap = new Map();
+  const deadlineMs = startTime ? startTime * 1000 : 0;
 
-  // 2. Pre-mint warmup & scheduling
-  if (startTime && startTime > now) {
-    const secondsRemaining = startTime - now;
-    logger.timer(`Allowlist mint scheduled for ${new Date(startTime * 1000).toLocaleTimeString()} (in ${secondsRemaining}s)`);
-
-    // T-10s: Pre-fetch nonces
-    if (secondsRemaining > 10) {
-      await logger.preciseCountdown(secondsRemaining - 10);
-      logger.info('T-10s: Refreshing wallet nonces...');
-      nonceMap = await WalletService.prefetchNonces(wallets, provider);
-
-      // T-5s: Connection warming across OpenSea REST and all RPCs
-      logger.info('T-5s: Pre-warming socket pool across OpenSea API and RPC endpoints...');
-      await connectionManager.preWarmSockets(['https://api.opensea.io', ...broadcaster.rpcUrls]);
-      await logger.preciseCountdown(3.5);
-
-      // T-1.5s: Parallel hammering OpenSea Drops API for early calldata
-      logger.speed('T-1.5s: Requesting OpenSea drop calldata & signatures...');
-      const hammerStart = Date.now();
-      let retryDelay = 100;
-      while (Date.now() - hammerStart < 4000) {
-        try {
-          calldataMap = await fetchAllCalldata(wallets, config, authHeadersByAddress, fallbackAuthHeaders);
-          if (calldataMap.size > 0) {
-            logger.success(`Early calldata acquired for ${calldataMap.size} wallet(s)!`);
-            break;
-          }
-        } catch (err) {
-          retryDelay = Math.min(250, retryDelay + 25);
-        }
-        await new Promise(r => setTimeout(r, retryDelay));
-      }
+  // Deadline-based helper: wait until (deadline - offsetMs), self-correcting
+  const waitUntilBefore = async (offsetMs, label) => {
+    const targetMs = deadlineMs - offsetMs;
+    const remainingMs = targetMs - Date.now();
+    if (remainingMs > 0) {
+      await logger.preciseCountdown(remainingMs / 1000);
     } else {
-      await logger.preciseCountdown(secondsRemaining);
+      logger.warn(`${label}: Already past target (${Math.abs(Math.round(remainingMs))}ms late), skipping wait`);
+    }
+  };
+
+  // --- DEADLINE-BASED WARMUP PIPELINE ---
+  if (deadlineMs > Date.now()) {
+    const totalRemaining = Math.ceil((deadlineMs - Date.now()) / 1000);
+    logger.timer(`Allowlist mint scheduled for ${new Date(deadlineMs).toLocaleTimeString()} (in ${totalRemaining}s)`);
+
+    // T-15s: Refresh nonces
+    if (deadlineMs - Date.now() > 15000) {
+      await waitUntilBefore(15000, 'T-15s');
+    }
+    logger.info('T-15s: Refreshing wallet nonces...');
+    nonceMap = await WalletService.prefetchNonces(wallets, provider);
+
+    // T-5s: Pre-warm sockets
+    if (deadlineMs - Date.now() > 5000) {
+      await waitUntilBefore(5000, 'T-5s');
+    }
+    logger.info('T-5s: Pre-warming sockets across OpenSea API and RPC endpoints...');
+    await connectionManager.preWarmSockets(['https://api.opensea.io', ...broadcaster.rpcUrls]);
+
+    // T-3s: Hammer OpenSea for early calldata (1.5s timeout per attempt)
+    if (deadlineMs - Date.now() > 3000) {
+      await waitUntilBefore(3000, 'T-3s');
+    }
+    logger.speed('T-3s: Hammering OpenSea Drops API for calldata (1.5s timeout)...');
+    const hammerEnd = deadlineMs + 2000; // allow up to 2s past deadline
+    let hammerAttempt = 0;
+    while (Date.now() < hammerEnd && calldataMap.size === 0) {
+      hammerAttempt++;
+      try {
+        calldataMap = await fetchAllCalldata(wallets, config, authHeadersByAddress, fallbackAuthHeaders, 1500);
+        if (calldataMap.size > 0) {
+          logger.success(`Early calldata acquired for ${calldataMap.size} wallet(s) on attempt #${hammerAttempt}!`);
+          break;
+        }
+      } catch (err) {}
+      await new Promise(r => setTimeout(r, 100));
+    }
+    if (calldataMap.size === 0 && hammerAttempt > 0) {
+      logger.warn(`Hammer phase: ${hammerAttempt} attempts, no calldata yet — will retry after deadline`);
     }
   }
 
-  // 3. Final calldata fetch if not already acquired
+  // Final calldata fetch if not already acquired (full 8s timeout)
   if (calldataMap.size === 0) {
     logger.info('Fetching mint calldata via OpenSea Drops API...');
     calldataMap = await fetchAllCalldata(wallets, config, authHeadersByAddress, fallbackAuthHeaders);
@@ -218,7 +234,7 @@ async function runAllowlistMint(config) {
     throw new Error('Could not obtain calldata for any wallet. Check drop live status, wallet eligibility, or use Direct SeaDrop Mint.');
   }
 
-  // 4. Pre-flight simulation on first valid calldata (skipping estimateGas to save 1 RPC round trip)
+  // Pre-flight simulation on first valid calldata
   const firstWalletAddr = Array.from(calldataMap.keys())[0];
   const firstCalldata = calldataMap.get(firstWalletAddr);
   if (firstCalldata) {
@@ -231,7 +247,7 @@ async function runAllowlistMint(config) {
     if (!sim.success) {
       logger.warn(`Simulation check: ${sim.revertReason}`);
     } else {
-      logger.success('Pre-flight simulation successful (0 gas cost).');
+      logger.success('Pre-flight simulation passed.');
     }
   }
 
@@ -240,7 +256,8 @@ async function runAllowlistMint(config) {
   const maxPriorityFeePerGasWei = gasFees.maxPriorityFeePerGas;
   logger.gasEstimate(formatGasSelection(gasFees));
 
-  // 5. Pre-sign raw transactions offline for 0ms CPU latency at broadcast time
+  // Pre-sign transactions immediately
+  logger.info('Pre-signing transactions offline...');
   const preparedTxs = await Promise.all(wallets.map(async (wallet) => {
     const calldata = calldataMap.get(wallet.address.toLowerCase());
     if (!calldata) {
@@ -270,6 +287,12 @@ async function runAllowlistMint(config) {
       return { wallet, signedTx: null, error: err.message };
     }
   }));
+
+  // Final wait until T-50ms before FIRE (if scheduled)
+  if (deadlineMs > Date.now()) {
+    logger.info('Transactions signed. Holding for precise launch...');
+    await waitUntilBefore(50, 'FIRE');
+  }
 
   // Re-warm sockets right before firing to ensure TCP/TLS is hot
   await connectionManager.preWarmSockets(broadcaster.rpcUrls);

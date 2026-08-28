@@ -306,6 +306,80 @@ const WalletService = {
    */
   connectWallets(wallets, provider) {
     return wallets.map(w => w.connect(provider));
+  },
+
+  /**
+   * Distribute ETH from a master wallet to multiple recipient addresses sequentially
+   * @param {ethers.Wallet} masterWallet - Master wallet instance
+   * @param {string[]} recipientAddresses - List of addresses to fund
+   * @param {bigint} amountWeiEach - Amount in wei to send to each address
+   * @param {ethers.Provider} provider - Ethers provider
+   * @param {object} [gasFees] - Optional resolved gas fees
+   * @returns {Promise<Array<{address: string, status: 'SUCCESS'|'FAILED', txHash: string|null, blockNumber?: number, error: string|null}>>}
+   */
+  async fundWallets(masterWallet, recipientAddresses, amountWeiEach, provider, gasFees) {
+    const results = [];
+    const connectedWallet = masterWallet.connect(provider);
+    const network = await provider.getNetwork();
+
+    let currentNonce = await provider.getTransactionCount(masterWallet.address, 'pending');
+
+    for (let i = 0; i < recipientAddresses.length; i++) {
+      const recipient = recipientAddresses[i];
+      const shortAddr = `${recipient.slice(0, 6)}...${recipient.slice(-4)}`;
+      logger.info(`[${i + 1}/${recipientAddresses.length}] Sending ${ethers.formatEther(amountWeiEach)} ETH to ${shortAddr}...`);
+
+      try {
+        const txReq = {
+          to: recipient,
+          value: amountWeiEach,
+          nonce: currentNonce,
+          chainId: network.chainId,
+          type: 2
+        };
+
+        if (gasFees) {
+          txReq.maxFeePerGas = gasFees.maxFeePerGas;
+          txReq.maxPriorityFeePerGas = gasFees.maxPriorityFeePerGas;
+        }
+
+        const txResponse = await connectedWallet.sendTransaction(txReq);
+        logger.speed(`  Tx sent: ${txResponse.hash}`);
+        currentNonce++; // sequential nonce increment
+
+        const receipt = await txResponse.wait(1);
+        if (receipt && receipt.status === 1) {
+          logger.success(`  [${i + 1}/${recipientAddresses.length}] Confirmed in block #${receipt.blockNumber} (${shortAddr})`);
+          results.push({
+            address: recipient,
+            status: 'SUCCESS',
+            txHash: txResponse.hash,
+            blockNumber: receipt.blockNumber,
+            error: null
+          });
+        } else {
+          logger.error(`  [${i + 1}/${recipientAddresses.length}] Transaction failed or reverted for ${shortAddr}`);
+          results.push({
+            address: recipient,
+            status: 'FAILED',
+            txHash: txResponse.hash,
+            error: 'Transaction reverted'
+          });
+        }
+      } catch (err) {
+        logger.error(`  [${i + 1}/${recipientAddresses.length}] Error sending to ${shortAddr}: ${err.message}`);
+        results.push({
+          address: recipient,
+          status: 'FAILED',
+          txHash: null,
+          error: err.message
+        });
+        // refresh pending nonce in case of failure/collision
+        currentNonce = await provider.getTransactionCount(masterWallet.address, 'pending').catch(() => currentNonce);
+      }
+    }
+
+    return results;
   }
 };
 

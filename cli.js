@@ -14,6 +14,7 @@ const connectionManager = require('./src/services/connectionManager');
 const { runPublicMint } = require('./src/engines/publicMintEngine');
 const { runAllowlistMint } = require('./src/engines/allowlistMintEngine');
 const { checkAllWallets } = require('./src/engines/eligibilityChecker');
+const { getEthPriceUsd, convertUsdToEth, convertEthToUsd } = require('./src/utils/priceFetcher');
 
 async function main() {
   console.clear();
@@ -310,23 +311,88 @@ async function main() {
       await authService.authenticate(wallets[0]);
       const authHeaders = authService.getAuthHeaders(wallets[0].address);
 
-      startTime = await Scheduler.autoSchedule(collectionSlug, authHeaders);
-    } else if (timingChoice === 'CUSTOM_TIME') {
-      const { timeInput } = await inquirer.prompt([
-        {
-          type: 'input',
-          name: 'timeInput',
-          message: 'Enter Start Time (Unix timestamp in seconds or ISO format):',
-          validate: val => {
-            if (/^\d{10}$/.test(val.trim())) return true;
-            if (!isNaN(Date.parse(val.trim()))) return true;
-            return 'Please enter a valid 10-digit unix timestamp or ISO date string';
+      try {
+        startTime = await Scheduler.autoSchedule(collectionSlug, authHeaders);
+      } catch (schedErr) {
+        logger.error(`Auto-schedule failed: ${schedErr.message}`);
+        const { fallbackChoice } = await inquirer.prompt([
+          {
+            type: 'list',
+            name: 'fallbackChoice',
+            message: 'Auto-schedule failed. What would you like to do?',
+            choices: [
+              { name: '🚀 Mint Immediately (now)', value: 'NOW' },
+              { name: '⏱  In 1 minute', value: 60 },
+              { name: '⏱  In 5 minutes', value: 300 },
+              { name: '❌ Abort', value: 'ABORT' }
+            ]
           }
+        ]);
+
+        if (fallbackChoice === 'ABORT') {
+          logger.warn('Aborted by user.');
+          process.exit(0);
+        } else if (fallbackChoice === 'NOW') {
+          startTime = 0;
+        } else {
+          startTime = Math.floor(Date.now() / 1000) + fallbackChoice;
+          logger.info(`Fallback scheduled for: ${new Date(startTime * 1000).toLocaleString()}`);
+        }
+      }
+    } else if (timingChoice === 'CUSTOM_TIME') {
+      const { quickPick } = await inquirer.prompt([
+        {
+          type: 'list',
+          name: 'quickPick',
+          message: 'Schedule mint for:',
+          choices: [
+            { name: '⏱  In 1 minute', value: 60 },
+            { name: '⏱  In 2 minutes', value: 120 },
+            { name: '⏱  In 5 minutes', value: 300 },
+            { name: '⏱  In 10 minutes', value: 600 },
+            { name: '⏱  In 30 minutes', value: 1800 },
+            { name: '✏️  Enter custom time (HH:MM / timestamp / ISO)', value: 'CUSTOM' }
+          ]
         }
       ]);
 
-      const raw = timeInput.trim();
-      startTime = /^\d{10}$/.test(raw) ? parseInt(raw) : Math.floor(Date.parse(raw) / 1000);
+      if (quickPick === 'CUSTOM') {
+        const { timeInput } = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'timeInput',
+            message: 'Enter time (HH:MM for today, 10-digit unix timestamp, or ISO date):',
+            validate: val => {
+              const v = val.trim();
+              if (/^\d{10}$/.test(v)) return true;
+              if (/^\d{1,2}:\d{2}$/.test(v)) return true;
+              if (!isNaN(Date.parse(v))) return true;
+              return 'Enter HH:MM (e.g. 14:30), a 10-digit unix timestamp, or an ISO date';
+            }
+          }
+        ]);
+
+        const raw = timeInput.trim();
+        if (/^\d{10}$/.test(raw)) {
+          startTime = parseInt(raw);
+        } else if (/^\d{1,2}:\d{2}$/.test(raw)) {
+          // Parse HH:MM as today's date
+          const [h, m] = raw.split(':').map(Number);
+          const target = new Date();
+          target.setHours(h, m, 0, 0);
+          // If the time already passed today, assume tomorrow
+          if (target.getTime() < Date.now()) {
+            target.setDate(target.getDate() + 1);
+          }
+          startTime = Math.floor(target.getTime() / 1000);
+        } else {
+          startTime = Math.floor(Date.parse(raw) / 1000);
+        }
+      } else {
+        // Quick offset — add seconds to current time
+        startTime = Math.floor(Date.now() / 1000) + quickPick;
+      }
+
       logger.info(`Scheduled for: ${new Date(startTime * 1000).toLocaleString()}`);
     }
 
@@ -573,6 +639,287 @@ async function generateWalletsMode() {
       console.log(`  ${e.address}`);
     }
     logger.separator();
+
+    // Ask if user wants to auto-fund these wallets from a master wallet
+    const { shouldFund } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'shouldFund',
+        message: 'Would you like to auto-fund these generated wallets from a master wallet now?',
+        default: false
+      }
+    ]);
+
+    if (shouldFund) {
+      logger.separator();
+      logger.info('💰 Auto-Funding Setup');
+
+      // 1. Select Chain & RPC
+      const chainChoices = getChainChoices();
+      chainChoices.push({ name: '🔧 Custom EVM RPC Endpoint', value: 'CUSTOM' });
+
+      const { fundChain } = await inquirer.prompt([
+        {
+          type: 'list',
+          name: 'fundChain',
+          message: 'Select Chain to fund on:',
+          choices: chainChoices
+        }
+      ]);
+
+      let rpcUrl = '';
+      let chainConfig = fundChain;
+
+      if (fundChain === 'CUSTOM') {
+        const { customRpc, customChainId } = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'customRpc',
+            message: 'Enter RPC URL:',
+            validate: input => (input.trim().length > 0 ? true : 'RPC URL is required')
+          },
+          {
+            type: 'number',
+            name: 'customChainId',
+            message: 'Enter Chain ID:',
+            default: 1
+          }
+        ]);
+        rpcUrl = customRpc.trim();
+        chainConfig = { name: 'Custom', chainId: customChainId, defaultRpc: rpcUrl };
+      } else {
+        const defaultChainRpc = fundChain.alchemyPrefix && process.env.ALCHEMY_KEY
+          ? expandAlchemyKey(process.env.ALCHEMY_KEY, fundChain)
+          : (fundChain.defaultRpc || process.env.DEFAULT_RPC_URL);
+
+        const { rpcInput } = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'rpcInput',
+            message: `RPC Endpoint for ${fundChain.name} (Press Enter to use default):`,
+            default: defaultChainRpc
+          }
+        ]);
+        rpcUrl = expandAlchemyKey(rpcInput.trim(), fundChain);
+      }
+
+      logger.info(`Connecting to RPC: ${rpcUrl}`);
+      const provider = connectionManager.createEthersProvider(rpcUrl, chainConfig.chainId);
+
+      try {
+        const net = await provider.getNetwork();
+        logger.success(`Connected to ${chainConfig.name} (Chain ID: ${net.chainId})`);
+      } catch (rpcErr) {
+        logger.error(`Could not connect to RPC: ${rpcErr.message}`);
+        process.exit(1);
+      }
+
+      // 2. Master Wallet Private Key
+      logger.separator();
+      const { masterPk } = await inquirer.prompt([
+        {
+          type: 'password',
+          name: 'masterPk',
+          message: 'Enter Master / Funding Wallet Private Key:',
+          mask: '*',
+          validate: input => {
+            let key = input.trim();
+            if (!key.startsWith('0x')) key = '0x' + key;
+            try {
+              new ethers.Wallet(key);
+              return true;
+            } catch (e) {
+              return 'Invalid private key format';
+            }
+          }
+        }
+      ]);
+
+      let cleanMasterKey = masterPk.trim();
+      if (!cleanMasterKey.startsWith('0x')) cleanMasterKey = '0x' + cleanMasterKey;
+      const masterWallet = new ethers.Wallet(cleanMasterKey);
+      logger.success(`Master Wallet: ${masterWallet.address}`);
+
+      // Check Master Balance
+      const masterBalanceWei = await provider.getBalance(masterWallet.address);
+      const masterBalanceEth = ethers.formatEther(masterBalanceWei);
+      logger.info(`Master Wallet Balance: ${masterBalanceEth} ETH`);
+
+      if (masterBalanceWei === 0n) {
+        logger.error('Master wallet has 0 ETH balance. Cannot fund wallets.');
+        process.exit(1);
+      }
+
+      // 3. Fetch Live ETH Price in USD
+      logger.separator();
+      logger.info('Fetching live ETH price...');
+      const ethPriceUsd = await getEthPriceUsd();
+      if (ethPriceUsd) {
+        logger.info(`Live ETH Price: $${ethPriceUsd.toLocaleString()} USD`);
+      } else {
+        logger.warn('Could not fetch live ETH price from price APIs.');
+      }
+
+      // 4. Prompt for Funding Amount (USD or ETH)
+      const { inputMode } = await inquirer.prompt([
+        {
+          type: 'list',
+          name: 'inputMode',
+          message: 'How would you like to specify the funding amount per wallet?',
+          choices: ethPriceUsd ? [
+            { name: `💵 In USD ($) — Converted using live price ($${ethPriceUsd}/ETH)`, value: 'USD' },
+            { name: '💎 In ETH (e.g. 0.005 ETH)', value: 'ETH' }
+          ] : [
+            { name: '💎 In ETH (e.g. 0.005 ETH)', value: 'ETH' },
+            { name: '💵 In USD ($)', value: 'USD' }
+          ]
+        }
+      ]);
+
+      let amountEthEach = '0';
+
+      if (inputMode === 'USD') {
+        let priceToUse = ethPriceUsd;
+        if (!priceToUse) {
+          const { manualPrice } = await inquirer.prompt([
+            {
+              type: 'number',
+              name: 'manualPrice',
+              message: 'Enter current ETH price in USD (e.g. 2500):',
+              default: 2500,
+              validate: v => (v > 0 ? true : 'Price must be > 0')
+            }
+          ]);
+          priceToUse = manualPrice;
+        }
+
+        const { usdInput } = await inquirer.prompt([
+          {
+            type: 'number',
+            name: 'usdInput',
+            message: 'How much USD ($) to fund each wallet?',
+            default: 10,
+            validate: v => (v > 0 ? true : 'Amount must be > 0')
+          }
+        ]);
+
+        amountEthEach = convertUsdToEth(usdInput, priceToUse);
+        logger.info(`$${usdInput} USD per wallet = ~${amountEthEach} ETH per wallet (at $${priceToUse}/ETH)`);
+      } else {
+        const { ethInput } = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'ethInput',
+            message: 'How much ETH to fund each wallet (e.g. 0.01)?',
+            default: '0.005',
+            validate: v => {
+              try {
+                const p = ethers.parseEther(v.trim());
+                return p > 0n ? true : 'Must be > 0';
+              } catch (e) {
+                return 'Invalid ETH amount';
+              }
+            }
+          }
+        ]);
+
+        amountEthEach = ethInput.trim();
+        if (ethPriceUsd) {
+          const amountUsdEach = convertEthToUsd(amountEthEach, ethPriceUsd);
+          logger.info(`${amountEthEach} ETH per wallet = ~$${amountUsdEach} USD (at $${ethPriceUsd}/ETH)`);
+        }
+      }
+
+      const amountWeiEach = ethers.parseEther(amountEthEach);
+      const totalAmountWei = amountWeiEach * BigInt(entries.length);
+      const totalAmountEth = ethers.formatEther(totalAmountWei);
+      const totalAmountUsd = ethPriceUsd ? (parseFloat(amountEthEach) * entries.length * ethPriceUsd).toFixed(2) : null;
+
+      // Estimate gas for transfers (21000 gas per standard transfer)
+      const isL2 = chainConfig.chainId !== 1;
+      const feeData = await provider.getFeeData().catch(() => ({}));
+      const maxFeePerGas = feeData.maxFeePerGas || (isL2 ? ethers.parseUnits('0.1', 'gwei') : ethers.parseUnits('25', 'gwei'));
+      const maxPriorityFeePerGas = feeData.maxPriorityFeePerGas || (isL2 ? ethers.parseUnits('0.01', 'gwei') : ethers.parseUnits('1.5', 'gwei'));
+      const gasPerTransfer = 21000n;
+      const totalGasCostWei = maxFeePerGas * gasPerTransfer * BigInt(entries.length);
+      const totalRequiredWei = totalAmountWei + totalGasCostWei;
+      const totalRequiredEth = ethers.formatEther(totalRequiredWei);
+
+      logger.separator();
+      logger.info('=== FUNDING BREAKDOWN ===');
+      console.log(`Wallets to fund:      ${entries.length}`);
+      console.log(`Amount per wallet:    ${amountEthEach} ETH ${ethPriceUsd ? `(~$${(parseFloat(amountEthEach) * ethPriceUsd).toFixed(2)})` : ''}`);
+      console.log(`Total Transfer Amount:${totalAmountEth} ETH ${totalAmountUsd ? `(~$${totalAmountUsd})` : ''}`);
+      console.log(`Est. Total Gas Fees:  ~${ethers.formatEther(totalGasCostWei)} ETH (${entries.length} txs)`);
+      console.log(`Total Needed:         ~${totalRequiredEth} ETH`);
+      console.log(`Master Balance:       ${masterBalanceEth} ETH`);
+      logger.separator();
+
+      if (masterBalanceWei < totalRequiredWei) {
+        logger.error(`Insufficient Master Balance! Needed ~${totalRequiredEth} ETH, but master only has ${masterBalanceEth} ETH.`);
+        process.exit(1);
+      }
+
+      const { confirmFund } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'confirmFund',
+          message: `Send ~${totalAmountEth} ETH total to ${entries.length} wallet(s)?`,
+          default: true
+        }
+      ]);
+
+      if (!confirmFund) {
+        logger.warn('Auto-funding aborted by user.');
+        process.exit(0);
+      }
+
+      // Execute transfers
+      logger.separator();
+      logger.speed(`>>> Executing ${entries.length} funding transaction(s)... <<<`);
+      const recipientAddresses = entries.map(e => e.address);
+      const gasFees = { maxFeePerGas, maxPriorityFeePerGas };
+      
+      const fundResults = await WalletService.fundWallets(
+        masterWallet,
+        recipientAddresses,
+        amountWeiEach,
+        provider,
+        gasFees
+      );
+
+      // Print Summary Table
+      logger.separator();
+      logger.info('=== FUNDING RESULTS ===');
+      const fundTable = new Table({
+        head: [
+          chalk.white.bold('#'),
+          chalk.white.bold('Address'),
+          chalk.white.bold('Amount (ETH)'),
+          chalk.white.bold('Status'),
+          chalk.white.bold('Tx Hash / Error')
+        ],
+        colWidths: [5, 46, 16, 12, 40],
+        style: { head: [], border: [] }
+      });
+
+      let successCount = 0;
+      fundResults.forEach((r, idx) => {
+        const isSuccess = r.status === 'SUCCESS';
+        if (isSuccess) successCount++;
+        fundTable.push([
+          idx + 1,
+          r.address,
+          amountEthEach,
+          isSuccess ? chalk.green('SUCCESS') : chalk.red('FAILED'),
+          r.txHash ? `${r.txHash.slice(0, 18)}...` : (r.error || 'N/A')
+        ]);
+      });
+
+      console.log(fundTable.toString());
+      logger.separator();
+      logger.success(`Successfully funded ${successCount}/${entries.length} wallet(s)!`);
+    }
 
     process.exit(0);
   } catch (err) {

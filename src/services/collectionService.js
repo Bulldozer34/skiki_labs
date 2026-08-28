@@ -40,14 +40,23 @@ const CollectionService = {
 
       const variables = { slug: cleanSlug };
 
-      const res = await axios.post('https://gql.opensea.io/graphql/', {
+      const gqlHeaders = {
+        ...authHeaders,
+        'Content-Type': 'application/json',
+        'x-app-id': process.env.X_APP_ID || 'os2-web'
+      };
+
+      const apiKey = (process.env.OPENSEA_API_KEY || process.env.OPENSEA_KEY || '').trim();
+      if (apiKey) {
+        gqlHeaders['x-api-key'] = apiKey;
+      }
+
+      const gqlUrl = process.env.OPENSEA_GQL_URL || 'https://gql.opensea.io/graphql/';
+      const res = await axios.post(gqlUrl, {
         query,
         variables
       }, {
-        headers: {
-          ...authHeaders,
-          'Content-Type': 'application/json'
-        },
+        headers: gqlHeaders,
         timeout: 8000
       });
 

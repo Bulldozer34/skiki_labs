@@ -297,7 +297,12 @@ npm start -- --generate 5
 1. Generates cryptographic Ethereum wallets with valid public addresses and private keys.
 2. Displays a formatted table with addresses and keys.
 3. Automatically saves the keys to a timestamped file (e.g., `wallets_20260827120000.txt`).
-4. Prints an address-only list so you can easily copy and fund them with ETH.
+4. **💰 Auto-Funding (Optional):** Prompts you if you want to automatically fund all generated wallets directly from a master wallet.
+   - Enter your funded master wallet private key
+   - Enter the funding amount in **USD ($)** (e.g. `$10` each) or **ETH** (e.g. `0.005 ETH` each)
+   - The bot fetches the live ETH/USD price, calculates the exact ETH and gas required, and distributes funds sequentially
+   - Prints a confirmation table with transaction hashes
+5. Prints an address-only list so you can easily copy and check them on block explorers.
 
 ---
 

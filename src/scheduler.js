@@ -10,21 +10,35 @@ const Scheduler = {
    * @param {string} slug 
    * @param {object} authHeaders 
    * @param {number} stageIndex 
+   * @param {number} maxRetries - Max poll attempts before giving up (default 20 = ~10 min)
    * @returns {Promise<number>} Resolved start timestamp (seconds)
    */
-  async autoSchedule(slug, authHeaders, stageIndex = 0) {
+  async autoSchedule(slug, authHeaders, stageIndex = 0, maxRetries = 20) {
     logger.info(`Auto-scheduling: Monitoring drop "${slug}" for stage start time...`);
     
     let lastStartTime = null;
+    let retryCount = 0;
+    let failCount = 0;
 
-    while (true) {
+    while (retryCount < maxRetries) {
+      retryCount++;
       const dropInfo = await CollectionService.getDropInfo(slug, authHeaders);
       
       if (!dropInfo || !dropInfo.stages || dropInfo.stages.length === 0) {
-        logger.warn('Could not fetch stage schedule. Retrying in 15 seconds...');
+        failCount++;
+        if (failCount >= 5) {
+          logger.error(`Auto-schedule failed: Could not fetch drop schedule after ${failCount} consecutive failures.`);
+          logger.warn('Possible causes: invalid slug, OpenSea GraphQL changed, or no API key set.');
+          logger.warn('Tip: Use "Specific Start Time" mode instead, or check your OPENSEA_API_KEY in .env');
+          throw new Error(`Auto-schedule gave up after ${failCount} failed API calls. Use CUSTOM_TIME mode.`);
+        }
+        logger.warn(`Could not fetch stage schedule (attempt ${failCount}/5). Retrying in 15 seconds...`);
         await new Promise(r => setTimeout(r, 15000));
         continue;
       }
+
+      // Reset fail counter on success
+      failCount = 0;
 
       const targetStage = dropInfo.stages[stageIndex] || dropInfo.stages[0];
       const startTimeSeconds = Math.floor(new Date(targetStage.startTime).getTime() / 1000);
@@ -50,8 +64,12 @@ const Scheduler = {
       }
 
       // Otherwise poll every 30 seconds for any creator delay/schedule adjustments
+      logger.info(`[Schedule] Poll ${retryCount}/${maxRetries} — next check in 30s...`);
       await new Promise(r => setTimeout(r, 30000));
     }
+
+    logger.error(`Auto-schedule timed out after ${maxRetries} polls (~${Math.round(maxRetries * 30 / 60)} min).`);
+    throw new Error('Auto-schedule polling limit reached. Use CUSTOM_TIME mode instead.');
   }
 };
 

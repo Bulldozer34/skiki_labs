@@ -107,51 +107,69 @@ async function runPublicMint(config) {
     throw new Error('No transactions could be prepared.');
   }
 
-  // Handle countdown if start time is in the future
-  const now = Math.floor(Date.now() / 1000);
-  if (startTime && startTime > now) {
-    const secondsRemaining = startTime - now;
-    logger.timer(`Drop starts at ${new Date(startTime * 1000).toLocaleTimeString()} (in ${secondsRemaining}s)`);
+  // --- DEADLINE-BASED WARMUP PIPELINE ---
+  const deadlineMs = startTime ? startTime * 1000 : 0;
 
-    if (secondsRemaining > 10) {
-      await logger.preciseCountdown(secondsRemaining - 10);
-      
-      // T-10s: Refresh nonces
-      logger.info('T-10s: Refreshing nonces across all wallets...');
-      await WalletService.prefetchNonces(validPrepared.map(p => p.wallet), provider);
-      for (const p of validPrepared) {
-        try {
-          const freshNonce = WalletService.consumeNonce(p.wallet.address) ?? await provider.getTransactionCount(p.wallet.address, 'pending');
-          if (freshNonce !== p.nonce) {
-            p.nonce = freshNonce;
-            p.rawTxObj.nonce = freshNonce;
-            p.signedTx = await p.wallet.signTransaction(p.rawTxObj);
-          }
-        } catch (e) {}
-      }
-
-      // T-5s: Warm socket connections
-      logger.info('T-5s: Pre-warming socket pool across all RPC endpoints...');
-      await connectionManager.preWarmSockets(broadcaster.rpcUrls);
-      await logger.preciseCountdown(4.5);
-
-      // T-0.5s: Pre-flight simulation check
-      if (validPrepared[0] && validPrepared[0].rawTxObj) {
-        const sim = await simulator.simulate({
-          from: validPrepared[0].wallet.address,
-          to: seadropAddress,
-          data: validPrepared[0].rawTxObj.data,
-          value: totalCostPerWalletWei
-        }, true);
-        if (!sim.success) {
-          logger.warn(`Pre-flight simulation notice: ${sim.revertReason}`);
-        } else {
-          logger.success('Pre-flight simulation passed (0 gas cost).');
-        }
-      }
-      await logger.preciseCountdown(0.5);
+  const waitUntilBefore = async (offsetMs, label) => {
+    const targetMs = deadlineMs - offsetMs;
+    const remainingMs = targetMs - Date.now();
+    if (remainingMs > 0) {
+      await logger.preciseCountdown(remainingMs / 1000);
     } else {
-      await logger.preciseCountdown(secondsRemaining);
+      logger.warn(`${label}: Already past target (${Math.abs(Math.round(remainingMs))}ms late), skipping wait`);
+    }
+  };
+
+  if (deadlineMs > Date.now()) {
+    const totalRemaining = Math.ceil((deadlineMs - Date.now()) / 1000);
+    logger.timer(`Drop starts at ${new Date(deadlineMs).toLocaleTimeString()} (in ${totalRemaining}s)`);
+
+    // T-15s: Refresh nonces and re-sign if changed
+    if (deadlineMs - Date.now() > 15000) {
+      await waitUntilBefore(15000, 'T-15s');
+    }
+    logger.info('T-15s: Refreshing nonces across all wallets...');
+    await WalletService.prefetchNonces(validPrepared.map(p => p.wallet), provider);
+    for (const p of validPrepared) {
+      try {
+        const freshNonce = WalletService.consumeNonce(p.wallet.address) ?? await provider.getTransactionCount(p.wallet.address, 'pending');
+        if (freshNonce !== p.nonce) {
+          p.nonce = freshNonce;
+          p.rawTxObj.nonce = freshNonce;
+          p.signedTx = await p.wallet.signTransaction(p.rawTxObj);
+        }
+      } catch (e) {}
+    }
+
+    // T-5s: Warm socket connections
+    if (deadlineMs - Date.now() > 5000) {
+      await waitUntilBefore(5000, 'T-5s');
+    }
+    logger.info('T-5s: Pre-warming socket pool across all RPC endpoints...');
+    await connectionManager.preWarmSockets(broadcaster.rpcUrls);
+
+    // T-2s: Pre-flight simulation
+    if (deadlineMs - Date.now() > 2000) {
+      await waitUntilBefore(2000, 'T-2s');
+    }
+    if (validPrepared[0] && validPrepared[0].rawTxObj) {
+      const sim = await simulator.simulate({
+        from: validPrepared[0].wallet.address,
+        to: seadropAddress,
+        data: validPrepared[0].rawTxObj.data,
+        value: totalCostPerWalletWei
+      }, true);
+      if (!sim.success) {
+        logger.warn(`Pre-flight simulation notice: ${sim.revertReason}`);
+      } else {
+        logger.success('Pre-flight simulation passed.');
+      }
+    }
+
+    // Final hold until T-50ms
+    if (deadlineMs > Date.now()) {
+      logger.info('Transactions signed. Holding for precise launch...');
+      await waitUntilBefore(50, 'FIRE');
     }
   }
 
