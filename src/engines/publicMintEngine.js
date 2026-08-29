@@ -122,7 +122,7 @@ async function runPublicMint(config) {
 
   if (deadlineMs > Date.now()) {
     const totalRemaining = Math.ceil((deadlineMs - Date.now()) / 1000);
-    logger.timer(`Drop starts at ${new Date(deadlineMs).toLocaleTimeString()} (in ${totalRemaining}s)`);
+    logger.timer(`Drop starts at ${new Date(deadlineMs).toLocaleTimeString()} (in ${logger.formatDuration(totalRemaining)})`);
 
     // T-15s: Refresh nonces and re-sign if changed
     if (deadlineMs - Date.now() > 15000) {

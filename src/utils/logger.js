@@ -104,13 +104,40 @@ const logger = {
   },
 
   /**
+   * Format duration in seconds into human-readable string:
+   * e.g., '1h 15m 30s', '5m 30s', '45s', or '4.2s' (if subSecond is true and seconds <= 10)
+   * @param {number} seconds
+   * @param {boolean} subSecond
+   * @returns {string}
+   */
+  formatDuration(seconds, subSecond = false) {
+    const totalSecs = Math.max(0, Number(seconds) || 0);
+    if (subSecond && totalSecs <= 10) {
+      return `${totalSecs.toFixed(1)}s`;
+    }
+    const rounded = Math.ceil(totalSecs);
+    const hrs = Math.floor(rounded / 3600);
+    const mins = Math.floor((rounded % 3600) / 60);
+    const secs = rounded % 60;
+
+    if (hrs > 0) {
+      return `${hrs}h ${mins}m ${secs}s`;
+    }
+    if (mins > 0) {
+      return `${mins}m ${secs}s`;
+    }
+    return `${secs}s`;
+  },
+
+  /**
    * Live updating countdown line
    */
   countdown(seconds) {
     return new Promise(resolve => {
-      let current = seconds;
+      let current = Math.max(0, Math.ceil(Number(seconds || 0)));
       const interval = setInterval(() => {
-        process.stdout.write(`\r${chalk.blue('⏱')} Starting in ${chalk.yellow(current)} seconds...  `);
+        const display = this.formatDuration(current);
+        process.stdout.write(`\r${chalk.blue('⏱')} Starting in ${chalk.yellow(display)}...   `);
         if (current <= 0) {
           clearInterval(interval);
           process.stdout.write('\r\n');
@@ -137,11 +164,10 @@ const logger = {
 
       const tick = () => {
         const remainingMs = Math.max(0, deadline - Date.now());
-        const display = remainingMs <= 10000
-          ? (remainingMs / 1000).toFixed(1)
-          : Math.ceil(remainingMs / 1000).toString();
+        const remainingSec = remainingMs / 1000;
+        const display = this.formatDuration(remainingSec, true);
 
-        process.stdout.write(`\r${chalk.blue('[timer]')} Starting in ${chalk.yellow(display)} seconds...  `);
+        process.stdout.write(`\r${chalk.blue('[timer]')} Starting in ${chalk.yellow(display)}...   `);
 
         if (remainingMs <= 0) {
           process.stdout.write('\r\n');

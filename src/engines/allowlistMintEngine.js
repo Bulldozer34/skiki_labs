@@ -182,7 +182,7 @@ async function runAllowlistMint(config) {
   // --- DEADLINE-BASED WARMUP PIPELINE ---
   if (deadlineMs > Date.now()) {
     const totalRemaining = Math.ceil((deadlineMs - Date.now()) / 1000);
-    logger.timer(`Allowlist mint scheduled for ${new Date(deadlineMs).toLocaleTimeString()} (in ${totalRemaining}s)`);
+    logger.timer(`Allowlist mint scheduled for ${new Date(deadlineMs).toLocaleTimeString()} (in ${logger.formatDuration(totalRemaining)})`);
 
     // T-15s: Refresh nonces
     if (deadlineMs - Date.now() > 15000) {

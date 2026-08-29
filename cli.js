@@ -336,7 +336,8 @@ async function main() {
           startTime = 0;
         } else {
           startTime = Math.floor(Date.now() / 1000) + fallbackChoice;
-          logger.info(`Fallback scheduled for: ${new Date(startTime * 1000).toLocaleString()}`);
+          const diffSec = startTime - Math.floor(Date.now() / 1000);
+          logger.info(`Fallback scheduled for: ${new Date(startTime * 1000).toLocaleString()} (in ${logger.formatDuration(diffSec)})`);
         }
       }
     } else if (timingChoice === 'CUSTOM_TIME') {
@@ -393,7 +394,8 @@ async function main() {
         startTime = Math.floor(Date.now() / 1000) + quickPick;
       }
 
-      logger.info(`Scheduled for: ${new Date(startTime * 1000).toLocaleString()}`);
+      const diffSec = startTime - Math.floor(Date.now() / 1000);
+      logger.info(`Scheduled for: ${new Date(startTime * 1000).toLocaleString()} (in ${logger.formatDuration(diffSec)})`);
     }
 
     // ---------------------------------------------------------
@@ -409,7 +411,8 @@ async function main() {
     console.log(`Quantity/Wallet:${quantity} (Total: ${wallets.length * quantity})`);
     console.log(`Recipient:      ${recipientAddress || 'None (Stay in minting wallets)'}`);
     console.log(`Max Fee:        ${gasSettings.maxFeePerGas} Gwei | Tip: ${gasSettings.maxPriorityFeePerGas} Gwei`);
-    console.log(`Start Time:     ${startTime ? new Date(startTime * 1000).toLocaleTimeString() : 'Immediate'}`);
+    const timeUntilStr = startTime ? ` (in ${logger.formatDuration(startTime - Math.floor(Date.now() / 1000))})` : '';
+    console.log(`Start Time:     ${startTime ? new Date(startTime * 1000).toLocaleTimeString() + timeUntilStr : 'Immediate'}`);
     logger.separator();
 
     const { confirmed } = await inquirer.prompt([

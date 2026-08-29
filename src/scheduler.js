@@ -48,7 +48,7 @@ const Scheduler = {
         lastStartTime = startTimeSeconds;
         const remaining = startTimeSeconds - now;
         if (remaining > 0) {
-          logger.timer(`[Schedule] Stage "${targetStage.name}" set to start at: ${new Date(targetStage.startTime).toLocaleString()} (in ${remaining}s)`);
+          logger.timer(`[Schedule] Stage "${targetStage.name}" set to start at: ${new Date(targetStage.startTime).toLocaleString()} (in ${logger.formatDuration(remaining)})`);
         } else {
           logger.success(`[Schedule] Stage "${targetStage.name}" is already LIVE!`);
           return startTimeSeconds;
@@ -64,7 +64,7 @@ const Scheduler = {
       }
 
       // Otherwise poll every 30 seconds for any creator delay/schedule adjustments
-      logger.info(`[Schedule] Poll ${retryCount}/${maxRetries} — next check in 30s...`);
+      logger.info(`[Schedule] Poll ${retryCount}/${maxRetries} (T-${logger.formatDuration(remaining)}) — next check in 30s...`);
       await new Promise(r => setTimeout(r, 30000));
     }
 
