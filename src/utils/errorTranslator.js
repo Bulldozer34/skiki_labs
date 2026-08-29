@@ -15,9 +15,9 @@ const ERROR_MAP = [
 
   // ── Mint Not Live ──
   {
-    patterns: [/NotActive/i, /MintNotLive/i, /mint is not active/i, /not yet started/i],
-    simple: "The mint hasn't started yet.",
-    action: "Check the start time and try again, or use Auto-Schedule mode."
+    patterns: [/NotActive/i, /MintNotLive/i, /DropNotActive/i, /DropStageNotActive/i, /mint is not active/i, /not yet started/i],
+    simple: "The mint is not active on-chain yet (block timestamp has not reached start time).",
+    action: "Check the start time and ensure local time/blockchain timestamp matches, or use Auto-Schedule mode."
   },
 
   // ── Allowlist Stage Not Active ──
@@ -29,9 +29,23 @@ const ERROR_MAP = [
 
   // ── Max Per Wallet Exceeded ──
   {
-    patterns: [/ExceedsMaxPerWallet/i, /max.*per.*wallet/i, /exceeds.*max/i, /already claimed/i],
+    patterns: [/ExceedsMaxPerWallet/i, /MintQuantityExceedsMaxMintedPerWallet/i, /max.*per.*wallet/i, /exceeds.*max/i, /already claimed/i],
     simple: "You've already minted the maximum number of NFTs allowed per wallet.",
     action: "Use a different wallet if you want to mint more."
+  },
+
+  // ── Sold Out / Max Supply ──
+  {
+    patterns: [/SoldOut/i, /MaxSupplyExceeded/i, /sold out/i, /max supply/i],
+    simple: "This NFT drop has sold out or reached total supply limit.",
+    action: "The collection has completely minted out."
+  },
+
+  // ── Fee Recipient Error ──
+  {
+    patterns: [/FeeRecipient/i, /InvalidFeeRecipient/i, /FeeRecipientNotAllowed/i, /FeeRecipientCannotBeZeroAddress/i],
+    simple: "Fee recipient address is restricted or invalid for this SeaDrop contract.",
+    action: "Re-run the bot so it re-queries on-chain allowed fee recipients."
   },
 
   // ── Insufficient Payment (price changed) ──
