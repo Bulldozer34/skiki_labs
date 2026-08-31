@@ -380,8 +380,76 @@ const WalletService = {
     }
 
     return results;
+  },
+
+  /**
+   * Check detailed balances, USD values, and nonces for a list of wallets or addresses
+   * @param {Array<ethers.Wallet|string>} targets 
+   * @param {ethers.Provider} provider 
+   * @param {number} [ethPriceUsd=0]
+   * @returns {Promise<Array<{address: string, balanceEth: string, balanceWei: bigint, balanceUsd: string, nonce: number}>>}
+   */
+  async checkDetailedBalances(targets, provider, ethPriceUsd = 0) {
+    const promises = targets.map(async (target) => {
+      const address = typeof target === 'string' ? ethers.getAddress(target) : target.address;
+      try {
+        const [balanceWei, nonce] = await Promise.all([
+          provider.getBalance(address),
+          provider.getTransactionCount(address, 'latest').catch(() => 0)
+        ]);
+        const balanceEth = ethers.formatEther(balanceWei);
+        const balanceUsd = ethPriceUsd > 0 
+          ? (parseFloat(balanceEth) * ethPriceUsd).toFixed(2)
+          : '0.00';
+        return {
+          address,
+          balanceEth,
+          balanceWei,
+          balanceUsd,
+          nonce
+        };
+      } catch (err) {
+        return {
+          address,
+          balanceEth: '0.0',
+          balanceWei: 0n,
+          balanceUsd: '0.00',
+          nonce: 0
+        };
+      }
+    });
+
+    return await Promise.all(promises);
+  },
+
+  /**
+   * Load addresses or private keys from a file (skips comments, derives address if private key)
+   * @param {string} filePath 
+   * @returns {string[]} List of checksummed 0x addresses
+   */
+  loadAddressesFromFile(filePath) {
+    const resolved = path.resolve(filePath);
+    const content = fs.readFileSync(resolved, 'utf-8');
+    const lines = content.split(/[\r\n]+/).map(s => s.trim()).filter(Boolean);
+    const addresses = [];
+
+    for (const line of lines) {
+      if (line.startsWith('#') || line.startsWith('//')) continue;
+      let clean = line.startsWith('0x') ? line : '0x' + line;
+      try {
+        if (clean.length === 42 && ethers.isAddress(clean)) {
+          const addr = ethers.getAddress(clean);
+          if (!addresses.includes(addr)) addresses.push(addr);
+        } else {
+          const w = new ethers.Wallet(clean);
+          if (!addresses.includes(w.address)) addresses.push(w.address);
+        }
+      } catch (e) {}
+    }
+    return addresses;
   }
 };
 
 module.exports = WalletService;
+
 

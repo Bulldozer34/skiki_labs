@@ -8,7 +8,7 @@ const CHAINS = {
     chainId: 46630,
     symbol: 'ETH',
     defaultRpc: 'https://rpc.testnet.chain.robinhood.com/rpc',
-    alchemyPrefix: null,
+    alchemyPrefix: 'robinhood-testnet',
     explorerUrl: 'https://explorer.testnet.chain.robinhood.com',
     faucetUrl: 'https://faucet.testnet.chain.robinhood.com',
     seadropAddress: '0x00005EA00Ac477B1030CE78506496e8C2dE24bf5'
@@ -18,7 +18,7 @@ const CHAINS = {
     chainId: 4663,
     symbol: 'ETH',
     defaultRpc: 'https://rpc.mainnet.chain.robinhood.com',
-    alchemyPrefix: null,
+    alchemyPrefix: 'robinhood-mainnet',
     explorerUrl: 'https://robinhoodchain.blockscout.com',
     seadropAddress: '0x00005EA00Ac477B1030CE78506496e8C2dE24bf5'
   },

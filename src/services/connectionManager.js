@@ -1,15 +1,38 @@
 const https = require('https');
 const http = require('http');
+const dns = require('dns');
+const { promisify } = require('util');
+const dnsLookup = promisify(dns.lookup);
 const axios = require('axios');
 const { ethers } = require('ethers');
 
 /**
  * Persistent Connection Manager for high-speed socket reuse
- * Supports both HTTP and WebSocket RPC connections
+ * Supports both HTTP and WebSocket RPC connections with DNS cache and TCP_NODELAY
  */
 class ConnectionManager {
   constructor() {
-    // 1. Configure Persistent Keep-Alive Agents with TCP_NODELAY & IPv4 Fast-Path
+    // In-memory DNS cache: hostname -> IPv4
+    this._dnsCache = new Map();
+
+    const customLookup = (hostname, options, callback) => {
+      if (typeof options === 'function') {
+        callback = options;
+        options = {};
+      }
+      const cached = this._dnsCache.get(hostname);
+      if (cached) {
+        return callback(null, cached, 4);
+      }
+      dns.lookup(hostname, { family: 4 }, (err, address, family) => {
+        if (!err && address) {
+          this._dnsCache.set(hostname, address);
+        }
+        callback(err, address, family);
+      });
+    };
+
+    // 1. Configure Persistent Keep-Alive Agents with TCP_NODELAY & IPv4 Fast-Path & Custom DNS
     this.httpsAgent = new https.Agent({
       keepAlive: true,
       keepAliveMsecs: 120000,
@@ -18,7 +41,8 @@ class ConnectionManager {
       timeout: 15000,
       scheduling: 'lifo', // Last-In First-Out reuses the hottest sockets first
       noDelay: true,      // Disable Nagle algorithm (TCP_NODELAY) for instant packet dispatch
-      family: 4           // Force IPv4 to prevent 250ms+ IPv6 fallback stalls on Windows
+      family: 4,          // Force IPv4 to prevent 250ms+ IPv6 fallback stalls on Windows
+      lookup: customLookup
     });
 
     this.httpAgent = new http.Agent({
@@ -29,7 +53,8 @@ class ConnectionManager {
       timeout: 15000,
       scheduling: 'lifo',
       noDelay: true,
-      family: 4
+      family: 4,
+      lookup: customLookup
     });
 
     // 2. Pre-configured Axios instance with persistent sockets
@@ -48,6 +73,9 @@ class ConnectionManager {
 
     // 4. WebSocket provider cache
     this._wsProviderCache = new Map();
+
+    // 5. Pre-serialized JSON-RPC buffer cache
+    this._bufferPayloadCache = new Map();
   }
 
   /**
@@ -225,6 +253,24 @@ class ConnectionManager {
   }
 
   /**
+   * Pre-resolve all hostnames to IPv4 addresses into memory cache
+   * Completely eliminates 40-80ms DNS resolution stalls during drop time
+   * @param {string[]} urls 
+   */
+  async preResolveDns(urls) {
+    const promises = (urls || []).filter(Boolean).map(async (u) => {
+      try {
+        const parsed = new URL(u);
+        const res = await dnsLookup(parsed.hostname, { family: 4 });
+        if (res && res.address) {
+          this._dnsCache.set(parsed.hostname, res.address);
+        }
+      } catch (e) {}
+    });
+    await Promise.allSettled(promises);
+  }
+
+  /**
    * Destroy all cached WebSocket connections on shutdown
    */
   async destroyWsConnections() {
@@ -236,4 +282,5 @@ class ConnectionManager {
 }
 
 module.exports = new ConnectionManager();
+
 

@@ -1,3 +1,4 @@
+const chalk = require('chalk');
 const { getPublicDropParams, encodeMintPublicCalldata, SEADROP_ADDRESSES } = require('../contracts/seadrop');
 const { getChainKey } = require('../utils/chains');
 const logger = require('../utils/logger');
@@ -17,7 +18,8 @@ const { resolveGasFees, formatGasSelection } = require('../utils/gasEstimator');
  * @param {object} config 
  */
 async function runPublicMint(config) {
-  const { wallets, provider, rpcUrls, nftContractAddress, chain, quantity, gasSettings, recipientAddress } = config;
+  const { wallets, provider, rpcUrls, nftContractAddress, chain: chainConfig, quantity, gasSettings, recipientAddress } = config;
+  const chain = chainConfig;
   let { startTime } = config;
   
   const chainKey = getChainKey(chain);
@@ -172,19 +174,22 @@ async function runPublicMint(config) {
           isBusy = false;
         }
 
-        // 2. T-5s Milestone: Socket pool pre-warm
+        // 2. T-5s Milestone: DNS Pre-Resolution & Socket pool pre-warm
         if (remainingMs <= 5000 && !didT5) {
           didT5 = true;
           isBusy = true;
-          process.stdout.write(`\r${chalk.blue('[timer]')} ${chalk.yellow(logger.formatDuration(remainingMs / 1000, true))} [T-5s: Pre-warming sockets...]    \n`);
+          process.stdout.write(`\r${chalk.blue('[timer]')} ${chalk.yellow(logger.formatDuration(remainingMs / 1000, true))} [T-5s: DNS Pre-Resolution & Socket Warming...]    \n`);
           try {
-            logger.info('T-5s: Pre-warming socket pool across all RPC endpoints...');
-            await connectionManager.preWarmSockets(broadcaster.rpcUrls);
+            logger.info('T-5s: Pre-resolving DNS & warming persistent socket pool...');
+            await Promise.all([
+              connectionManager.preResolveDns(broadcaster.rpcUrls),
+              connectionManager.preWarmSockets(broadcaster.rpcUrls)
+            ]);
           } catch (e) {}
           isBusy = false;
         }
 
-        // 3. T-2s Milestone: Pre-flight simulation
+        // 3. T-2s Milestone: Pre-flight simulation & Live Sequencer Block Clock Check
         if (remainingMs <= 2000 && !didT2) {
           didT2 = true;
           isBusy = true;
@@ -207,6 +212,19 @@ async function runPublicMint(config) {
           isBusy = false;
         }
 
+        // Live Sequencer Clock Synchronization (Final 2.5s):
+        // If sequencer block timestamp has already ticked to onChainStartTime, trigger immediately!
+        if (remainingMs <= 2500 && onChainStartTime > 0) {
+          try {
+            const block = await provider.getBlock('latest').catch(() => null);
+            if (block && Number(block.timestamp) >= onChainStartTime) {
+              process.stdout.write(`\r${chalk.blue('[timer]')} ${chalk.green('⚡ Sequencer block clock live! Launching instant blast...')}    \n`);
+              resolve();
+              return;
+            }
+          } catch (e) {}
+        }
+
         // Final hold check
         if (remainingMs > 50) {
           const display = logger.formatDuration(remainingMs / 1000, true);
@@ -225,8 +243,8 @@ async function runPublicMint(config) {
   // Re-warm sockets right before firing
   await connectionManager.preWarmSockets(broadcaster.rpcUrls);
 
-  // Multi-RPC Simultaneous Broadcast Racing
-  logger.speed(`>>> FIRE! Multi-RPC Broadcasting ${validPrepared.length} transactions across ${broadcaster.rpcUrls.length} node(s) <<<`);
+  // Multi-RPC FIFO Sequencer Packet Flood
+  logger.speed(`>>> ⚡ FIRE! Multi-RPC Packet Flooding ${validPrepared.length} transactions across ${broadcaster.rpcUrls.length} node(s) <<<`);
   const startTimeMs = Date.now();
   const totalWallets = validPrepared.length;
   let completedCount = 0;
@@ -235,8 +253,9 @@ async function runPublicMint(config) {
 
   const broadcastPromises = validPrepared.map(async ({ wallet, signedTx, rawTxObj }) => {
     const walletStartMs = Date.now();
+    let hasCounted = false;
     try {
-      const broadcastResult = await broadcaster.broadcastFastest(signedTx);
+      const broadcastResult = await broadcaster.broadcastFlood(signedTx);
       logger.walletLine(wallet.address, 'Sent', `Fastest RPC: ${broadcastResult.fastestRpc} (${broadcastResult.durationMs}ms)`);
 
       const { receipt } = await broadcaster.waitForReceiptFastest(broadcastResult.txHash, 1, 60000);
@@ -244,6 +263,7 @@ async function runPublicMint(config) {
       const latencyMs = Date.now() - startTimeMs;
 
       if (receipt && receipt.status === 1) {
+        hasCounted = true;
         completedCount++;
         successCount++;
         logger.mintProgress(completedCount, totalWallets, successCount, failCount);
@@ -294,9 +314,74 @@ async function runPublicMint(config) {
           customError = revertInfo.customError;
         } catch (e) {}
 
-        completedCount++;
-        failCount++;
-        logger.mintProgress(completedCount, totalWallets, successCount, failCount);
+        // --- MICRO-BURST AUTO-RETRY ON TIMING DRIFT (NotActive) ---
+        const isNotActiveError = (customError && customError.includes('NotActive')) || 
+                                 (decodedDetails && decodedDetails.toLowerCase().includes('notactive'));
+
+        if (isNotActiveError) {
+          logger.warn(`[${wallet.address.slice(0, 6)}...] Drop not active yet (node clock drift). Starting Micro-Burst Sniper retries...`);
+          
+          const retryDelaysMs = [350, 700, 1100];
+          for (let attempt = 0; attempt < retryDelaysMs.length; attempt++) {
+            await new Promise(r => setTimeout(r, retryDelaysMs[attempt]));
+            try {
+              const freshNonce = await provider.getTransactionCount(wallet.address, 'pending');
+              const retryTxObj = { ...rawTxObj, nonce: freshNonce };
+              const retrySignedTx = await wallet.signTransaction(retryTxObj);
+              logger.speed(`[${wallet.address.slice(0, 6)}...] Burst retry #${attempt + 1} firing... (Nonce: ${freshNonce})`);
+
+              const retryBroadcast = await broadcaster.broadcastFastest(retrySignedTx);
+              const retryWait = await broadcaster.waitForReceiptFastest(retryBroadcast.txHash, 1, 30000);
+
+              if (retryWait.receipt && retryWait.receipt.status === 1) {
+                hasCounted = true;
+                completedCount++;
+                successCount++;
+                const retryDurationMs = Date.now() - walletStartMs;
+                logger.mintProgress(completedCount, totalWallets, successCount, failCount);
+                logger.walletLine(wallet.address, 'SUCCESS', `Block #${retryWait.receipt.blockNumber} (Burst #${attempt + 1} succeeded in ${retryDurationMs}ms)`);
+
+                Notifier.sendMintAlert({
+                  address: wallet.address,
+                  status: 'SUCCESS',
+                  txHash: retryBroadcast.txHash,
+                  explorerUrl,
+                  contractAddress: nftContractAddress,
+                  latencyMs: Date.now() - startTimeMs,
+                  blockNumber: retryWait.receipt.blockNumber
+                });
+
+                return {
+                  timestamp: new Date().toISOString(),
+                  formattedTime: new Date().toLocaleString(),
+                  network: chainConfig?.name || network.name,
+                  contractAddress: nftContractAddress,
+                  walletAddress: wallet.address,
+                  maskedAddress: `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`,
+                  mode: 'PUBLIC',
+                  quantity,
+                  status: 'SUCCESS',
+                  txHash: retryBroadcast.txHash,
+                  blockNumber: Number(retryWait.receipt.blockNumber),
+                  gasUsed: retryWait.receipt.gasUsed?.toString(),
+                  gasPriceGwei: retryWait.receipt.gasPrice ? ethers.formatUnits(retryWait.receipt.gasPrice, 'gwei') : null,
+                  mintDurationMs: retryDurationMs,
+                  details: `Block #${retryWait.receipt.blockNumber} (Burst #${attempt + 1} in ${retryDurationMs}ms)`,
+                  revertReason: null
+                };
+              }
+            } catch (retryErr) {
+              // Continue to next burst attempt
+            }
+          }
+        }
+
+        if (!hasCounted) {
+          hasCounted = true;
+          completedCount++;
+          failCount++;
+          logger.mintProgress(completedCount, totalWallets, successCount, failCount);
+        }
         logger.walletLine(wallet.address, 'FAILED', decodedDetails);
 
         Notifier.sendMintAlert({
@@ -328,9 +413,12 @@ async function runPublicMint(config) {
         };
       }
     } catch (error) {
-      completedCount++;
-      failCount++;
-      logger.mintProgress(completedCount, totalWallets, successCount, failCount);
+      if (!hasCounted) {
+        hasCounted = true;
+        completedCount++;
+        failCount++;
+        logger.mintProgress(completedCount, totalWallets, successCount, failCount);
+      }
 
       const friendlyMsg = formatError(error);
       logger.walletLine(wallet.address, 'ERROR', friendlyMsg);

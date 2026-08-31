@@ -1,3 +1,4 @@
+const chalk = require('chalk');
 const { ethers } = require('ethers');
 const { getChainKey } = require('../utils/chains');
 const logger = require('../utils/logger');
@@ -125,7 +126,8 @@ async function fetchAllCalldata(wallets, config, authHeadersByAddress, fallbackA
  * Main Allowlist / FCFS Mint Runner with Multi-RPC Broadcast
  */
 async function runAllowlistMint(config) {
-  const { wallets, provider, rpcUrls, nftContractAddress, chain, quantity, gasSettings, recipientAddress } = config;
+  const { wallets, provider, rpcUrls, nftContractAddress, chain: chainConfig, quantity, gasSettings, recipientAddress } = config;
+  const chain = chainConfig;
   let { startTime } = config;
 
   const explorerUrl = chain?.explorerUrl || 'https://etherscan.io';
@@ -197,14 +199,18 @@ async function runAllowlistMint(config) {
           isBusy = false;
         }
 
-        // 2. T-5s: Socket pool pre-warm
+        // 2. T-5s: DNS Pre-resolution & Socket pool pre-warm
         if (remainingMs <= 5000 && !didT5) {
           didT5 = true;
           isBusy = true;
-          process.stdout.write(`\r${chalk.blue('[timer]')} ${chalk.yellow(logger.formatDuration(remainingMs / 1000, true))} [T-5s: Pre-warming sockets...]    \n`);
+          process.stdout.write(`\r${chalk.blue('[timer]')} ${chalk.yellow(logger.formatDuration(remainingMs / 1000, true))} [T-5s: DNS & Socket Warming...]    \n`);
           try {
-            logger.info('T-5s: Pre-warming sockets across OpenSea API and RPC endpoints...');
-            await connectionManager.preWarmSockets(['https://api.opensea.io', ...broadcaster.rpcUrls]);
+            logger.info('T-5s: Pre-resolving DNS & warming sockets across OpenSea API and RPC endpoints...');
+            const targets = ['https://api.opensea.io', ...broadcaster.rpcUrls];
+            await Promise.all([
+              connectionManager.preResolveDns(targets),
+              connectionManager.preWarmSockets(targets)
+            ]);
           } catch (e) {}
           isBusy = false;
         }
@@ -329,6 +335,7 @@ async function runAllowlistMint(config) {
   let failCount = 0;
 
   const txPromises = preparedTxs.map(async ({ wallet, signedTx, rawTxObj, error }) => {
+    let hasCounted = false;
     if (!signedTx) {
       completedCount++;
       failCount++;
@@ -351,7 +358,7 @@ async function runAllowlistMint(config) {
 
     const walletStartMs = Date.now();
     try {
-      const broadcastResult = await broadcaster.broadcastFastest(signedTx);
+      const broadcastResult = await broadcaster.broadcastFlood(signedTx);
       logger.walletLine(wallet.address, 'Sent', `Fastest: ${broadcastResult.fastestRpc} (${broadcastResult.durationMs}ms)`);
 
       const { receipt } = await broadcaster.waitForReceiptFastest(broadcastResult.txHash, 1, 60000);
@@ -359,6 +366,7 @@ async function runAllowlistMint(config) {
       const latencyMs = Date.now() - startTimeMs;
 
       if (receipt && receipt.status === 1) {
+        hasCounted = true;
         completedCount++;
         successCount++;
         logger.mintProgress(completedCount, totalWallets, successCount, failCount);
@@ -410,9 +418,12 @@ async function runAllowlistMint(config) {
           }
         } catch (e) {}
 
-        completedCount++;
-        failCount++;
-        logger.mintProgress(completedCount, totalWallets, successCount, failCount);
+        if (!hasCounted) {
+          hasCounted = true;
+          completedCount++;
+          failCount++;
+          logger.mintProgress(completedCount, totalWallets, successCount, failCount);
+        }
         logger.walletLine(wallet.address, 'FAILED', decodedDetails);
 
         Notifier.sendMintAlert({
@@ -444,9 +455,12 @@ async function runAllowlistMint(config) {
         };
       }
     } catch (error) {
-      completedCount++;
-      failCount++;
-      logger.mintProgress(completedCount, totalWallets, successCount, failCount);
+      if (!hasCounted) {
+        hasCounted = true;
+        completedCount++;
+        failCount++;
+        logger.mintProgress(completedCount, totalWallets, successCount, failCount);
+      }
 
       const friendlyMsg = formatError(error);
       logger.walletLine(wallet.address, 'ERROR', friendlyMsg);

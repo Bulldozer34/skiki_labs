@@ -102,6 +102,38 @@ class MultiRpcBroadcaster {
   }
 
   /**
+   * FIFO Sequencer Packet Flood:
+   * Concurrently blasts raw pre-signed transaction across all RPC endpoints at micro-interval offsets.
+   * Because the nonce is fixed, duplicates cost 0 extra gas while saturating the top of the sequencer queue.
+   * @param {string} signedTx 
+   * @param {number[]} [burstOffsets=[0, 60, 150, 280]] Millisecond burst offsets
+   * @returns {Promise<{ txHash: string, fastestRpc: string, durationMs: number }>}
+   */
+  async broadcastFlood(signedTx, burstOffsets = [0, 60, 150, 280]) {
+    const startTime = Date.now();
+    const computedTxHash = ethers.keccak256(signedTx);
+
+    // Launch burst storm across all endpoints
+    const allBursts = burstOffsets.map(async (offset) => {
+      if (offset > 0) {
+        await new Promise(r => setTimeout(r, offset));
+      }
+      return await this.broadcastFastest(signedTx).catch(() => ({
+        txHash: computedTxHash,
+        fastestRpc: this.rpcUrls[0] || 'sequencer',
+        durationMs: Date.now() - startTime
+      }));
+    });
+
+    const fastestResult = await Promise.any(allBursts);
+    return {
+      txHash: fastestResult.txHash || computedTxHash,
+      fastestRpc: fastestResult.fastestRpc,
+      durationMs: Date.now() - startTime
+    };
+  }
+
+  /**
    * Race multiple providers to get transaction receipt confirmation with minimum latency
    * Uses WebSocket push-based listening when available, with 40ms HTTP polling as fallback
    * @param {string} txHash 

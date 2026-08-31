@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 const inquirer = require('inquirer');
 const { ethers } = require('ethers');
 const logger = require('./src/utils/logger');
@@ -28,7 +30,7 @@ async function main() {
       {
         type: 'list',
         name: 'mintMode',
-        message: 'Select Minting Mode:',
+        message: 'Select Operation Mode:',
         choices: [
           {
             name: '⚡ OpenSea Allowlist / FCFS (Signed Mint via GraphQL)',
@@ -37,10 +39,25 @@ async function main() {
           {
             name: '🌊 Public Mint (Direct SeaDrop Contract - No OpenSea Auth Needed)',
             value: 'PUBLIC'
+          },
+          {
+            name: '💰 Check Wallet Balances & Nonces',
+            value: 'BALANCE'
+          },
+          {
+            name: '🔑 Bulk Wallet Generator (Burner Creation & Funding)',
+            value: 'GENERATE'
           }
         ]
       }
     ]);
+
+    if (mintMode === 'BALANCE') {
+      return await checkBalancesMode();
+    }
+    if (mintMode === 'GENERATE') {
+      return await generateWalletsMode();
+    }
 
     // ---------------------------------------------------------
     // STEP 2: Select Chain & RPC
@@ -242,9 +259,9 @@ async function main() {
 
     const calculatedMaxFee = (parseFloat(liveBaseFeeGwei) * 1.5).toFixed(3);
     const defaultMaxFee = isL2 
-      ? Math.max(0.05, Math.min(parseFloat(calculatedMaxFee) || 0.1, 0.5)).toString() 
+      ? Math.max(0.2, Math.min(parseFloat(calculatedMaxFee) || 0.4, 1.0)).toString() 
       : (process.env.DEFAULT_MAX_FEE_GWEI || '25.0');
-    const defaultPriorityFee = isL2 ? '0.01' : (process.env.DEFAULT_PRIORITY_FEE_GWEI || '1.5');
+    const defaultPriorityFee = isL2 ? '0.1' : (process.env.DEFAULT_PRIORITY_FEE_GWEI || '1.5');
     const defaultGasLimit = isL2 ? 200000 : (parseInt(process.env.DEFAULT_GAS_LIMIT) || 300000);
 
     const gasAnswers = await inquirer.prompt([
@@ -932,12 +949,302 @@ async function generateWalletsMode() {
   }
 }
 
-// Route: --check, --generate, or default mint
+/**
+ * Balance Checker Mode (--balance flag)
+ * Checks live ETH balance, USD value, and Nonce for any wallet(s) across any chain
+ */
+async function checkBalancesMode() {
+  console.clear();
+  logger.banner();
+  logger.info('💰 Wallet Balance & Nonce Checker');
+  logger.separator();
+
+  try {
+    // 1. Select Chain & RPC
+    const chainChoices = getChainChoices();
+    chainChoices.push({ name: '🔧 Custom EVM RPC Endpoint', value: 'CUSTOM' });
+
+    const { selectedChain } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'selectedChain',
+        message: 'Select Chain to check balances on:',
+        choices: chainChoices
+      }
+    ]);
+
+    let rpcUrl = '';
+    let chainConfig = selectedChain;
+
+    if (selectedChain === 'CUSTOM') {
+      const { customRpc, customChainId } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'customRpc',
+          message: 'Enter RPC URL:',
+          validate: input => (input.trim().length > 0 ? true : 'RPC URL is required')
+        },
+        {
+          type: 'number',
+          name: 'customChainId',
+          message: 'Enter Chain ID:',
+          default: 1
+        }
+      ]);
+
+      rpcUrl = customRpc.trim();
+      chainConfig = {
+        name: 'Custom',
+        chainId: customChainId,
+        defaultRpc: rpcUrl
+      };
+    } else {
+      const defaultChainRpc = selectedChain.alchemyPrefix && process.env.ALCHEMY_KEY
+        ? expandAlchemyKey(process.env.ALCHEMY_KEY, selectedChain)
+        : (selectedChain.defaultRpc || process.env.DEFAULT_RPC_URL);
+
+      const { rpcInput } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'rpcInput',
+          message: `RPC Endpoint for ${selectedChain.name} (Press Enter for default):`,
+          default: defaultChainRpc
+        }
+      ]);
+
+      rpcUrl = expandAlchemyKey(rpcInput.trim(), selectedChain);
+    }
+
+    logger.info(`Connecting to RPC: ${rpcUrl}`);
+    const provider = connectionManager.createEthersProvider(rpcUrl, chainConfig.chainId);
+
+    try {
+      const net = await provider.getNetwork();
+      logger.success(`Connected to network (Chain ID: ${net.chainId})`);
+    } catch (rpcErr) {
+      logger.error(`Could not connect to RPC: ${rpcErr.message}`);
+      process.exit(1);
+    }
+
+    // 2. Select Address Input Method
+    logger.separator();
+    const { inputMethod } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'inputMethod',
+        message: 'How would you like to provide wallets to check?',
+        choices: [
+          { name: '📄 Load from .txt file (wallets.txt / wallets_*.txt)', value: 'FILE' },
+          { name: '📋 Paste private keys or 0x addresses manually', value: 'PASTE' }
+        ]
+      }
+    ]);
+
+    let targetAddresses = [];
+
+    if (inputMethod === 'FILE') {
+      const files = fs.readdirSync(process.cwd()).filter(f => f.endsWith('.txt') || f.endsWith('.csv'));
+      const fileChoices = files.map(f => ({ name: f, value: f }));
+      fileChoices.push({ name: '✏️  Enter custom path...', value: 'CUSTOM' });
+
+      const { chosenFile } = await inquirer.prompt([
+        {
+          type: 'list',
+          name: 'chosenFile',
+          message: 'Select file to load addresses/keys from:',
+          choices: fileChoices
+        }
+      ]);
+
+      let targetPath = chosenFile;
+      if (chosenFile === 'CUSTOM') {
+        const { customPath } = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'customPath',
+            message: 'Enter file path:',
+            validate: input => fs.existsSync(input.trim()) ? true : 'File does not exist'
+          }
+        ]);
+        targetPath = customPath.trim();
+      }
+
+      targetAddresses = WalletService.loadAddressesFromFile(targetPath);
+    } else {
+      const { pastedAddresses } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'pastedAddresses',
+          message: 'Enter 0x addresses or private keys (separated by comma or space):',
+          validate: input => input.trim().length > 0 ? true : 'At least one address or key is required'
+        }
+      ]);
+
+      const lines = pastedAddresses.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
+      for (const line of lines) {
+        if (line.startsWith('#') || line.startsWith('//')) continue;
+        let clean = line.startsWith('0x') ? line : '0x' + line;
+        try {
+          if (clean.length === 42 && ethers.isAddress(clean)) {
+            const addr = ethers.getAddress(clean);
+            if (!targetAddresses.includes(addr)) targetAddresses.push(addr);
+          } else {
+            const w = new ethers.Wallet(clean);
+            if (!targetAddresses.includes(w.address)) targetAddresses.push(w.address);
+          }
+        } catch (e) {}
+      }
+    }
+
+    if (targetAddresses.length === 0) {
+      logger.error('No valid Ethereum addresses or keys provided. Exiting.');
+      process.exit(1);
+    }
+
+    logger.info(`Fetching balances and nonces for ${targetAddresses.length} wallet(s)...`);
+
+    // Fetch live ETH USD price
+    let ethPriceUsd = 0;
+    try {
+      ethPriceUsd = await getEthPriceUsd();
+    } catch (e) {}
+
+    const results = await WalletService.checkDetailedBalances(targetAddresses, provider, ethPriceUsd);
+
+    // Display formatted table
+    const chalk = require('chalk');
+    const Table = require('cli-table3');
+    const table = new Table({
+      head: [
+        chalk.white.bold('#'),
+        chalk.white.bold('Address'),
+        chalk.white.bold('ETH Balance'),
+        chalk.white.bold('USD Value'),
+        chalk.white.bold('Nonce (Tx Count)'),
+        chalk.white.bold('Status')
+      ],
+      colWidths: [5, 46, 18, 14, 18, 18],
+      style: { head: [], border: [] }
+    });
+
+    let totalWei = 0n;
+    let lowBalanceCount = 0;
+
+    results.forEach((r, idx) => {
+      totalWei += r.balanceWei;
+      const isZero = r.balanceWei === 0n;
+      const isLow = r.balanceWei < ethers.parseEther('0.0005');
+      if (isLow) lowBalanceCount++;
+
+      let statusStr = chalk.green('🟢 Ready');
+      if (isZero) {
+        statusStr = chalk.red('🔴 Empty (0)');
+      } else if (isLow) {
+        statusStr = chalk.yellow('🟡 Low (<0.0005)');
+      }
+
+      table.push([
+        idx + 1,
+        r.address,
+        `${parseFloat(r.balanceEth).toFixed(6)} ETH`,
+        ethPriceUsd > 0 ? `$${r.balanceUsd}` : '—',
+        r.nonce.toString(),
+        statusStr
+      ]);
+    });
+
+    console.log('');
+    console.log(table.toString());
+    console.log('');
+
+    const totalEth = ethers.formatEther(totalWei);
+    const totalUsd = ethPriceUsd > 0 ? (parseFloat(totalEth) * ethPriceUsd).toFixed(2) : '0.00';
+
+    logger.separator();
+    logger.info(`📊 Portfolio Summary:`);
+    console.log(`  Total Wallets:  ${results.length}`);
+    console.log(`  Total Balance:  ${parseFloat(totalEth).toFixed(6)} ETH ${ethPriceUsd > 0 ? `(~$${totalUsd} USD)` : ''}`);
+    console.log(`  Funded Wallets: ${results.length - lowBalanceCount} / ${results.length}`);
+    if (lowBalanceCount > 0) {
+      logger.warn(`  ⚠️  ${lowBalanceCount} wallet(s) have low or zero balance.`);
+    }
+    logger.separator();
+
+    // Option to auto-fund low wallets
+    if (lowBalanceCount > 0) {
+      const { promptAutoFund } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'promptAutoFund',
+          message: 'Would you like to auto-fund the low-balance wallets from a master wallet now?',
+          default: false
+        }
+      ]);
+
+      if (promptAutoFund) {
+        const lowAddresses = results.filter(r => r.balanceWei < ethers.parseEther('0.0005')).map(r => r.address);
+        
+        const { masterPrivateKey, fundAmountEth } = await inquirer.prompt([
+          {
+            type: 'password',
+            name: 'masterPrivateKey',
+            message: 'Enter Master Wallet Private Key:',
+            validate: input => {
+              let k = input.trim();
+              if (!k.startsWith('0x')) k = '0x' + k;
+              try {
+                new ethers.Wallet(k);
+                return true;
+              } catch (e) {
+                return 'Invalid private key';
+              }
+            }
+          },
+          {
+            type: 'input',
+            name: 'fundAmountEth',
+            message: 'Amount of ETH to send to EACH low-balance wallet:',
+            default: '0.001',
+            validate: input => (!isNaN(parseFloat(input)) && parseFloat(input) > 0 ? true : 'Invalid ETH amount')
+          }
+        ]);
+
+        let cleanMasterKey = masterPrivateKey.trim();
+        if (!cleanMasterKey.startsWith('0x')) cleanMasterKey = '0x' + cleanMasterKey;
+        const masterWallet = new ethers.Wallet(cleanMasterKey, provider);
+
+        const amountWeiEach = ethers.parseEther(fundAmountEth.trim());
+        const totalNeededWei = amountWeiEach * BigInt(lowAddresses.length);
+        const masterBalance = await provider.getBalance(masterWallet.address);
+
+        if (masterBalance < totalNeededWei) {
+          logger.error(`Master wallet has insufficient funds (Balance: ${ethers.formatEther(masterBalance)} ETH, Required: ${ethers.formatEther(totalNeededWei)} ETH)`);
+          process.exit(1);
+        }
+
+        const fundResults = await WalletService.fundWallets(masterWallet, lowAddresses, amountWeiEach, provider);
+        const fundSuccess = fundResults.filter(r => r.status === 'SUCCESS').length;
+        logger.success(`Auto-funded ${fundSuccess}/${lowAddresses.length} wallet(s)!`);
+      }
+    }
+
+    process.exit(0);
+  } catch (err) {
+    logger.error(`Balance check failed: ${err.message}`);
+    console.error(err);
+    process.exit(1);
+  }
+}
+
+// Route: --check, --generate, --balance, or default mint
 const args = process.argv.slice(2).map(a => a.toLowerCase());
 if (args.includes('--check') || args.includes('-c') || args.includes('check')) {
   checkEligibility();
 } else if (args.includes('--generate') || args.includes('-g') || args.includes('generate')) {
   generateWalletsMode();
+} else if (args.includes('--balance') || args.includes('-b') || args.includes('--bal') || args.includes('balance')) {
+  checkBalancesMode();
 } else {
   main();
 }
+
