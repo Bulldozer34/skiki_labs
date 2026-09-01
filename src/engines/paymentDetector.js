@@ -88,8 +88,8 @@ class PaymentDetector {
       }
     }
 
-    // 1. If source was 0 ETH, test free path first
-    if (sourceValueBig === 0n) {
+    // 1. If source was 0 ETH (or scaledValue is 0 ETH), test free path
+    if (sourceValueBig === 0n || scaledValue === 0n) {
       const freeSim = await simulateValue(0n);
       if (freeSim.success) {
         return {
@@ -100,24 +100,24 @@ class PaymentDetector {
           valuePerToken: 0n,
           quantity: targetQty,
           confidence: 'high',
-          reason: 'Source tx was 0 ETH and simulation confirmed free mint'
+          reason: 'Simulation confirmed free mint (0 ETH)'
         };
       }
-    }
-
-    // 2. Test scaled value path
-    const scaledSim = await simulateValue(scaledValue);
-    if (scaledSim.success) {
-      return {
-        shouldExecute: true,
-        paymentMode: scaledValue === 0n ? 'free' : 'paid',
-        selectedValue: '0x' + scaledValue.toString(16),
-        selectedValueEth: ethers.formatEther(scaledValue),
-        valuePerToken,
-        quantity: targetQty,
-        confidence: 'high',
-        reason: `Simulation passed with value ${ethers.formatEther(scaledValue)} ETH`
-      };
+    } else {
+      // 2. Test scaled value path for paid drops
+      const scaledSim = await simulateValue(scaledValue);
+      if (scaledSim.success) {
+        return {
+          shouldExecute: true,
+          paymentMode: 'paid',
+          selectedValue: '0x' + scaledValue.toString(16),
+          selectedValueEth: ethers.formatEther(scaledValue),
+          valuePerToken,
+          quantity: targetQty,
+          confidence: 'high',
+          reason: `Simulation passed with value ${ethers.formatEther(scaledValue)} ETH`
+        };
+      }
     }
 
     // 3. If scaled value failed but source was paid, try exact source value

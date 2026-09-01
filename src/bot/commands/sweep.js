@@ -1,5 +1,6 @@
 const { ethers } = require('ethers');
 const SweepService = require('../../services/sweepService');
+const WalletService = require('../../services/walletService');
 const logger = require('../../utils/logger');
 
 // In-memory sweep wizard state: chatId -> { step, data, expiresAt }
@@ -34,13 +35,11 @@ async function handleSweep(ctx) {
   try {
     const ownedNfts = await SweepService.scanBurnerNfts(wallets, provider);
 
-    // Calculate total drainable ETH
+    // Calculate total drainable ETH using Multicall3 single-RPC batch query
+    const balanceRecords = await WalletService.checkBalances(wallets, provider).catch(() => []);
     let totalEthBalance = 0;
-    for (const w of wallets) {
-      try {
-        const bal = await provider.getBalance(w.address);
-        totalEthBalance += parseFloat(ethers.formatEther(bal));
-      } catch (e) {}
+    for (const b of balanceRecords) {
+      totalEthBalance += parseFloat(b.balance || '0');
     }
 
     const wizardState = {

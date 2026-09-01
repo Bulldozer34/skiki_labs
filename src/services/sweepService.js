@@ -35,39 +35,50 @@ class SweepService {
       }
     }
 
-    const ownedNfts = [];
+    // Deduplicate candidate token keys
+    const uniqueCandidates = [];
     const verifiedKeys = new Set();
-
-    // 2. Verify on-chain current ownership of each candidate
     for (const item of candidates) {
       const key = `${item.contract.toLowerCase()}_${item.tokenId}`;
-      if (verifiedKeys.has(key)) continue;
-      verifiedKeys.add(key);
-
-      try {
-        const contract = new ethers.Contract(item.contract, ERC721_ABI, provider);
-        const currentOwner = await contract.ownerOf(item.tokenId).catch(() => null);
-
-        if (currentOwner && walletAddresses.has(currentOwner.toLowerCase())) {
-          let colName = 'NFT Collection';
-          try {
-            colName = await contract.name().catch(() => 'NFT');
-          } catch (e) {}
-
-          const wIdx = wallets.findIndex(w => w.address.toLowerCase() === currentOwner.toLowerCase());
-
-          ownedNfts.push({
-            contract: item.contract,
-            name: colName,
-            tokenId: item.tokenId,
-            walletAddress: currentOwner,
-            walletIndex: wIdx
-          });
-        }
-      } catch (err) {
-        // Token doesn't exist or revert
+      if (!verifiedKeys.has(key)) {
+        verifiedKeys.add(key);
+        uniqueCandidates.push(item);
       }
     }
+
+    // 2. Verify on-chain current ownership in parallel across all candidates
+    const verificationResults = await Promise.allSettled(
+      uniqueCandidates.map(async (item) => {
+        try {
+          const contract = new ethers.Contract(item.contract, ERC721_ABI, provider);
+          const currentOwner = await contract.ownerOf(item.tokenId).catch(() => null);
+
+          if (currentOwner && walletAddresses.has(currentOwner.toLowerCase())) {
+            let colName = 'NFT Collection';
+            try {
+              colName = await contract.name().catch(() => 'NFT');
+            } catch (e) {}
+
+            const wIdx = wallets.findIndex(w => w.address.toLowerCase() === currentOwner.toLowerCase());
+
+            return {
+              contract: item.contract,
+              name: colName,
+              tokenId: item.tokenId,
+              walletAddress: currentOwner,
+              walletIndex: wIdx
+            };
+          }
+        } catch (err) {
+          // Token doesn't exist or revert
+        }
+        return null;
+      })
+    );
+
+    const ownedNfts = verificationResults
+      .filter(r => r.status === 'fulfilled' && r.value !== null)
+      .map(r => r.value);
 
     return ownedNfts;
   }
