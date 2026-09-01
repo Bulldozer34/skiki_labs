@@ -22,6 +22,15 @@ A command-line sniper tool for **Public** SeaDrop and **OpenSea Allowlist / FCFS
 - **Tight Calldata Hammering**: At $T-1.5\text{s}$, enters a tight polling loop to capture server-generated signatures and salt the millisecond OpenSea opens the drop.
 - **Zero-Latency Nonce Cache**: Pre-fetches nonces at $T-10\text{s}$ across all wallets.
 
+#### 🐋 Engine C: Copy-Mint Engine & Whale Tracker (`src/engines/copyMintEngine.js`)
+*Stolen & Adapted from `singledavinci/ultra-dads-copy-mint-bot`*
+- **Mempool Pending Stream & Block Polling (`src/engines/trackerEngine.js`)**: Subscribes to pending transactions via WebSocket for sub-second mempool front-running, backed by HTTP block polling fallback.
+- **EVM Function Classifier (`src/engines/mintClassifier.js`)**: Recognizes 20+ NFT mint signatures (SeaDrop, Manifold, Zora, thirdweb, generic mints) and immediately rejects non-mint transactions (swaps, approvals, marketplace orders).
+- **Calldata Rewriter & Recipient Hijacker (`src/engines/calldataRewriter.js`)**: Automatically swaps out the whale's wallet address for your session burner addresses in SeaDrop, Manifold, Zora, and direct contract mints.
+- **Payment & Safety Gate (`src/engines/paymentDetector.js`)**: Runs dry-run simulations to detect 0 ETH free vs paid mints, scales values for quantity overdrive, and enforces strict `MAX_MINT_ETH` ceiling caps.
+- **In-Memory Deduplication Store (`src/engines/dedupeStore.js`)**: TTL cache preventing double-minting across mempool and confirmed blocks.
+- **Remote Control & 24/7 Automint**: Full integration with the Telegram daemon (`/track`, `/untrack`, `/tracked`, `/copymint`) and interactive terminal wizard.
+
 ### 2. Multi-Channel Webhook Notifications (`src/utils/notifier.js`)
 - **Discord Webhook**: Sends rich embeds with mint results, contract links, block numbers, transaction hashes, and latency in milliseconds.
 - **Telegram Bot**: Sends instant Markdown notifications directly to your phone.
@@ -94,11 +103,14 @@ node cli.js
 ```
 
 ### Wizard Flow
-1. **Mode**: Choose between `Allowlist / FCFS` or `Public Mint`.
-2. **Chain & RPC**: Select Base, Ethereum, Arbitrum, Optimism, Robinhood, or Custom RPC.
-3. **Private Keys**: Paste one or multiple private keys into the hidden prompt (supports multi-line paste).
-4. **Recipient**: Press Enter to use `.env` default or paste custom recipient.
-5. **Collection Identifier**: OpenSea collection link, item link, slug, or `0x` contract address.
-6. **Quantity**: Number of NFTs to mint per wallet.
-7. **Gas Settings**: Max fee (Gwei), priority tip (Gwei), and gas limit.
-8. **Timing**: Immediate, Auto-schedule from OpenSea, or Custom timestamp.
+1. **Mode**: Choose between `Allowlist / FCFS`, `Public Mint`, or `🐋 Copy-Mint Engine & Whale Tracker`.
+2. **Copy-Mint Sub-Options**:
+   - 🚀 **Live Tracker & Automint**: Continuous background mempool stream + block listener.
+   - 📋 **Manage Tracked Whales**: Add, remove, and toggle tracked whale addresses.
+   - 🔬 **Simulate Tx Hash**: Dry-run inspect past on-chain mint transactions.
+   - 🏆 **Import Scout Whales**: 1-click import top profitable wallets from the Robinhood Alpha Scout.
+3. **Chain & RPC**: Select Robinhood, Base, Ethereum, Arbitrum, Optimism, or Custom RPC.
+4. **Private Keys**: Paste one or multiple private keys into the hidden prompt (supports multi-line paste).
+5. **Recipient**: Press Enter to use `.env` default or paste custom recipient.
+6. **Gas Settings**: Max fee (Gwei), priority tip (Gwei), or preset (`RAPID`, `INSTANT`, `ULTRA`).
+

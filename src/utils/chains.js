@@ -1,5 +1,22 @@
 /**
  * Chain Configurations (Prioritizing Ethereum Mainnet, Robinhood Mainnet & Robinhood Testnet)
+ *
+ * Robinhood Chain is an Arbitrum Nitro (Orbit) chain, and its sequencer orders
+ * transactions strictly first-come-first-served — gas cannot buy queue position.
+ * That makes the *role* of each endpoint matter, so they are split out here
+ * rather than collapsed into one `defaultRpc`:
+ *
+ *   - `sequencerRpc` — the sequencer's write ingress. The only node that can
+ *     order a transaction; every other endpoint merely forwards to it, so this
+ *     is the shortest path that exists. Not behind Cloudflare (resolves straight
+ *     to AWS us-east-2) and measured ~19ms faster than `defaultRpc`. Accepts
+ *     **only** `eth_sendRawTransaction` — every read method returns
+ *     "does not exist/is not available", hence `broadcastOnly` below.
+ *   - `defaultRpc` — a read replica with the full method set, Cloudflare-fronted.
+ *   - `feedUrl` — Nitro sequencer feed: a push stream of what has already been
+ *     ordered. Removes the round-trip from drop detection and inclusion checks.
+ *
+ * Endpoints probed live 2026-08-31 against mainnet; `nitro/v3.11.3`, ArbOS 61.
  */
 
 const CHAINS = {
@@ -8,6 +25,8 @@ const CHAINS = {
     chainId: 46630,
     symbol: 'ETH',
     defaultRpc: 'https://rpc.testnet.chain.robinhood.com/rpc',
+    sequencerRpc: 'https://sequencer.testnet.chain.robinhood.com',
+    feedUrl: 'wss://feed.testnet.chain.robinhood.com',
     alchemyPrefix: 'robinhood-testnet',
     explorerUrl: 'https://explorer.testnet.chain.robinhood.com',
     faucetUrl: 'https://faucet.testnet.chain.robinhood.com',
@@ -18,6 +37,8 @@ const CHAINS = {
     chainId: 4663,
     symbol: 'ETH',
     defaultRpc: 'https://rpc.mainnet.chain.robinhood.com',
+    sequencerRpc: 'https://sequencer.mainnet.chain.robinhood.com',
+    feedUrl: 'wss://feed.mainnet.chain.robinhood.com',
     alchemyPrefix: 'robinhood-mainnet',
     explorerUrl: 'https://robinhoodchain.blockscout.com',
     seadropAddress: '0x00005EA00Ac477B1030CE78506496e8C2dE24bf5'

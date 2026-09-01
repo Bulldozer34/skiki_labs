@@ -1,4 +1,3 @@
-const chalk = require('chalk');
 const { getPublicDropParams, encodeMintPublicCalldata, SEADROP_ADDRESSES } = require('../contracts/seadrop');
 const { getChainKey } = require('../utils/chains');
 const logger = require('../utils/logger');
@@ -11,14 +10,20 @@ const WalletService = require('../services/walletService');
 const { ethers } = require('ethers');
 const { formatError } = require('../utils/errorTranslator');
 const { mintHistoryWriter } = require('../utils/asyncWriter');
+const MintTracker = require('../core/mintTracker');
 const { resolveGasFees, formatGasSelection } = require('../utils/gasEstimator');
+const { waitForDropWindow, resolveLeadTimeMs, calibrateLeadTimeMs } = require('../core/dropClock');
+const gcGuard = require('../core/gcGuard');
+const { SequencerFeed } = require('../services/sequencerFeed');
 
 /**
  * Execute public mint purely from on-chain SeaDrop parameters (No OpenSea API required)
- * @param {object} config 
+ * @param {object} config
+ * @param {{feed?: import('../services/sequencerFeed').SequencerFeed}} state
+ *   Resources the caller must tear down regardless of how this returns.
  */
-async function runPublicMint(config) {
-  const { wallets, provider, rpcUrls, nftContractAddress, chain: chainConfig, quantity, gasSettings, recipientAddress } = config;
+async function executePublicMint(config, state) {
+  const { wallets, provider, rpcUrls, endpoints, feedUrl, nftContractAddress, chain: chainConfig, quantity, gasSettings, recipientAddress } = config;
   const chain = chainConfig;
   let { startTime } = config;
   
@@ -36,8 +41,29 @@ async function runPublicMint(config) {
 
   // Initialize Multi-RPC Broadcaster & Simulator
   const network = await provider.getNetwork();
-  const broadcaster = new MultiRpcBroadcaster(rpcUrls || [provider._getConnection ? provider._getConnection().url : config.rpcUrl], Number(network.chainId));
+
+  // Sequencer feed first, so the broadcaster can use it for inclusion instead of
+  // polling. On a FIFO chain this is also the only way to read the sequencer's
+  // clock without spending a round-trip, which is what the early trigger needs.
+  const feed = feedUrl ? new SequencerFeed(feedUrl) : null;
+  state.feed = feed;
+  if (feed) {
+    const live = await feed.start().catch(() => false);
+    if (!live) {
+      logger.warn('Sequencer feed unavailable — falling back to block polling for drop detection.');
+    }
+  }
+
+  const broadcastTargets = endpoints
+    || rpcUrls
+    || [provider._getConnection ? provider._getConnection().url : config.rpcUrl];
+  const broadcaster = new MultiRpcBroadcaster(broadcastTargets, Number(network.chainId), { feed });
   const simulator = new PreflightSimulator(provider);
+
+  const sequencerTarget = broadcaster.endpoints.find(e => e.broadcastOnly);
+  if (sequencerTarget) {
+    logger.speed(`Write path: ${sequencerTarget.label} (direct sequencer ingress, no forwarding hop)`);
+  }
 
   // Pre-warm sockets immediately across all RPCs (non-blocking)
   connectionManager.preWarmSockets(broadcaster.rpcUrls).catch(() => {});
@@ -45,8 +71,11 @@ async function runPublicMint(config) {
   logger.info('Reading public drop parameters from SeaDrop contract...');
   const dropParams = await getPublicDropParams(provider, seadropAddress, nftContractAddress);
   
+  const armedPriceWei = dropParams.mintPrice;
+  let currentMintPriceWei = dropParams.mintPrice;
+  const isFreeMint = (armedPriceWei === 0n);
   const mintPriceEth = ethers.formatEther(dropParams.mintPrice);
-  const totalCostPerWalletWei = dropParams.mintPrice * BigInt(quantity);
+  let totalCostPerWalletWei = dropParams.mintPrice * BigInt(quantity);
   const totalCostPerWalletEth = ethers.formatEther(totalCostPerWalletWei);
 
   logger.info(`Public Mint Price: ${mintPriceEth} ETH (Total: ${totalCostPerWalletEth} ETH for ${quantity} NFTs)`);
@@ -83,7 +112,9 @@ async function runPublicMint(config) {
     }
   }
 
-  const gasFees = await resolveGasFees(provider, gasSettings, 'turbo');
+  // Honours the preset chosen in the CLI — 'ultra' engages the 75th-percentile,
+  // +60% tip boost and 3x base multiplier path inside gasEstimator.
+  const gasFees = await resolveGasFees(provider, gasSettings);
   const maxFeePerGasWei = gasFees.maxFeePerGas;
   const maxPriorityFeePerGasWei = gasFees.maxPriorityFeePerGas;
   logger.gasEstimate(formatGasSelection(gasFees));
@@ -133,129 +164,235 @@ async function runPublicMint(config) {
     throw new Error('No transactions could be prepared.');
   }
 
-  // --- UNIFIED CONTINUOUS WARMUP PIPELINE ---
+  // --- UNIFIED CONTINUOUS WARMUP & HIGH-PRECISION SPIN-LOOP PIPELINE ---
+  // The lead time starts at the configured/default value and is replaced at T-5s
+  // by one measured from the live path, unless the operator pinned it.
+  let leadTimeMs = resolveLeadTimeMs();
   const deadlineMs = startTime ? startTime * 1000 : 0;
 
-  if (deadlineMs > Date.now()) {
-    const totalRemaining = Math.ceil((deadlineMs - Date.now()) / 1000);
-    logger.timer(`Drop starts at ${new Date(deadlineMs).toLocaleTimeString()} (in ${logger.formatDuration(totalRemaining)})`);
-
-    let didT15 = false;
-    let didT5 = false;
-    let didT2 = false;
-
-    // Run unified continuous countdown until drop start
-    await new Promise(resolve => {
-      let isBusy = false;
-
-      const tick = async () => {
-        if (isBusy) return;
-        const remainingMs = deadlineMs - Date.now();
-
-        // 1. T-15s Milestone: Nonce refresh & re-sign
-        if (remainingMs <= 15000 && !didT15) {
-          didT15 = true;
-          isBusy = true;
-          process.stdout.write(`\r${chalk.blue('[timer]')} ${chalk.yellow(logger.formatDuration(remainingMs / 1000, true))} [T-15s: Refreshing nonces...]    \n`);
-          try {
-            logger.info('T-15s: Refreshing nonces across all wallets...');
-            await WalletService.prefetchNonces(validPrepared.map(p => p.wallet), provider);
-            for (const p of validPrepared) {
-              try {
-                const freshNonce = WalletService.consumeNonce(p.wallet.address) ?? await provider.getTransactionCount(p.wallet.address, 'pending');
-                if (freshNonce !== p.nonce) {
-                  p.nonce = freshNonce;
-                  p.rawTxObj.nonce = freshNonce;
-                  p.signedTx = await p.wallet.signTransaction(p.rawTxObj);
-                }
-              } catch (e) {}
-            }
-          } catch (e) {}
-          isBusy = false;
-        }
-
-        // 2. T-5s Milestone: DNS Pre-Resolution & Socket pool pre-warm
-        if (remainingMs <= 5000 && !didT5) {
-          didT5 = true;
-          isBusy = true;
-          process.stdout.write(`\r${chalk.blue('[timer]')} ${chalk.yellow(logger.formatDuration(remainingMs / 1000, true))} [T-5s: DNS Pre-Resolution & Socket Warming...]    \n`);
-          try {
-            logger.info('T-5s: Pre-resolving DNS & warming persistent socket pool...');
-            await Promise.all([
-              connectionManager.preResolveDns(broadcaster.rpcUrls),
-              connectionManager.preWarmSockets(broadcaster.rpcUrls)
-            ]);
-          } catch (e) {}
-          isBusy = false;
-        }
-
-        // 3. T-2s Milestone: Pre-flight simulation & Live Sequencer Block Clock Check
-        if (remainingMs <= 2000 && !didT2) {
-          didT2 = true;
-          isBusy = true;
-          process.stdout.write(`\r${chalk.blue('[timer]')} ${chalk.yellow(logger.formatDuration(remainingMs / 1000, true))} [T-2s: Pre-flight simulation...]    \n`);
-          try {
-            if (validPrepared[0] && validPrepared[0].rawTxObj) {
-              const sim = await simulator.simulate({
-                from: validPrepared[0].wallet.address,
-                to: seadropAddress,
-                data: validPrepared[0].rawTxObj.data,
-                value: totalCostPerWalletWei
-              }, true);
-              if (!sim.success) {
-                logger.warn(`Pre-flight simulation notice: ${sim.revertReason}`);
-              } else {
-                logger.success('Pre-flight simulation passed.');
-              }
-            }
-          } catch (e) {}
-          isBusy = false;
-        }
-
-        // Live Sequencer Clock Synchronization (Final 2.5s):
-        // If sequencer block timestamp has already ticked to onChainStartTime, trigger immediately!
-        if (remainingMs <= 2500 && onChainStartTime > 0) {
-          try {
-            const block = await provider.getBlock('latest').catch(() => null);
-            if (block && Number(block.timestamp) >= onChainStartTime) {
-              process.stdout.write(`\r${chalk.blue('[timer]')} ${chalk.green('⚡ Sequencer block clock live! Launching instant blast...')}    \n`);
-              resolve();
-              return;
-            }
-          } catch (e) {}
-        }
-
-        // Final hold check
-        if (remainingMs > 50) {
-          const display = logger.formatDuration(remainingMs / 1000, true);
-          process.stdout.write(`\r${chalk.blue('[timer]')} Drop starts in ${chalk.yellow(display)}...    `);
-          setTimeout(tick, Math.min(Math.max(10, remainingMs - 50), remainingMs <= 10000 ? 100 : 1000));
-        } else {
-          process.stdout.write('\r\n');
-          resolve();
-        }
-      };
-
-      tick();
-    });
+  // Pre-generate binary JSON-RPC buffers for zero runtime serialization
+  for (const p of validPrepared) {
+    if (p.signedTx) {
+      p.rawBuffer = connectionManager.createRawBufferPayload(p.signedTx);
+    }
   }
 
-  // Re-warm sockets right before firing
-  await connectionManager.preWarmSockets(broadcaster.rpcUrls);
+  /**
+   * Pre-sign the `NotActive()` recovery ladder.
+   *
+   * A revert still consumes the nonce, so a retry needs nonce+1, nonce+2 — and
+   * the old code discovered that at revert time by calling
+   * `getTransactionCount` and signing on the spot. That is the worst possible
+   * moment: learning the revert already cost one round-trip (~240ms), the nonce
+   * fetch costs another, and signing costs a few ms more, by which point the
+   * chain has produced roughly five blocks. Signing them during warmup makes
+   * the retry a pure send.
+   *
+   * @param {object} prepared
+   * @param {number} depth How many spare transactions to sign
+   */
+  const presignBackups = async (prepared, depth = 3) => {
+    prepared.backups = [];
+    for (let i = 1; i <= depth; i++) {
+      try {
+        const txObj = { ...prepared.rawTxObj, nonce: prepared.nonce + i };
+        const signed = await prepared.wallet.signTransaction(txObj);
+        prepared.backups.push({
+          nonce: txObj.nonce,
+          signedTx: signed,
+          rawBuffer: connectionManager.createRawBufferPayload(signed)
+        });
+      } catch (err) {
+        break;
+      }
+    }
+  };
+
+  await Promise.all(validPrepared.map(p => presignBackups(p)));
+
+  const dropTrigger = await waitForDropWindow({
+    deadlineMs,
+    leadTimeMs: () => leadTimeMs,
+    label: 'Drop',
+    milestones: [
+      {
+        atMs: 15000,
+        label: 'T-15s: Price watchdog & nonces refresh',
+        run: async () => {
+          logger.info('T-15s: Refreshing nonces and verifying on-chain price integrity...');
+
+          // 1. Live On-Chain Price & Bait-and-Switch Watchdog
+          try {
+            const freshDrop = await getPublicDropParams(provider, seadropAddress, nftContractAddress);
+            if (freshDrop && freshDrop.mintPrice !== currentMintPriceWei) {
+              const oldPriceEth = ethers.formatEther(currentMintPriceWei);
+              const newPriceEth = ethers.formatEther(freshDrop.mintPrice);
+
+              // Strict Bait & Switch Guard: Free mint stealth-changed to paid
+              if (isFreeMint && freshDrop.mintPrice > 0n) {
+                logger.error(`🚨 BAIT & SWITCH DETECTED: Drop price changed from FREE (0.00 ETH) to ${newPriceEth} ETH!`);
+                logger.error(`🛡️ ABORTING MINT IMMEDIATELY to protect wallet funds.`);
+                throw new Error(`Bait & switch prevented: creator raised price on free drop to ${newPriceEth} ETH.`);
+              }
+
+              // Price increased above initially armed price
+              if (freshDrop.mintPrice > armedPriceWei) {
+                logger.error(`🚨 PRICE INCREASE DETECTED: Price increased from ${oldPriceEth} ETH to ${newPriceEth} ETH!`);
+                logger.error(`🛡️ ABORTING MINT to prevent unexpected spend.`);
+                throw new Error(`Price increase prevented: creator changed price from ${oldPriceEth} ETH to ${newPriceEth} ETH.`);
+              }
+
+              // Price decreased (safe price drop): Auto-update and re-sign
+              logger.warn(`⚠️ On-chain price decreased: ${oldPriceEth} ETH -> ${newPriceEth} ETH. Auto-updating transactions...`);
+              currentMintPriceWei = freshDrop.mintPrice;
+              totalCostPerWalletWei = currentMintPriceWei * BigInt(quantity);
+              dropParams.feeRecipient = freshDrop.feeRecipient;
+
+              for (const p of validPrepared) {
+                const calldata = encodeMintPublicCalldata(nftContractAddress, dropParams.feeRecipient, p.wallet.address, quantity);
+                p.rawTxObj.data = calldata;
+                p.rawTxObj.value = totalCostPerWalletWei;
+                p.signedTx = await p.wallet.signTransaction(p.rawTxObj);
+                p.rawBuffer = connectionManager.createRawBufferPayload(p.signedTx);
+              }
+              logger.success(`Transactions updated to new price (${newPriceEth} ETH).`);
+            }
+          } catch (watchdogErr) {
+            if (watchdogErr.message && watchdogErr.message.includes('prevented')) {
+              throw watchdogErr;
+            }
+          }
+
+          // 2. Nonce Refresh
+          await WalletService.prefetchNonces(validPrepared.map(p => p.wallet), provider);
+          for (const p of validPrepared) {
+            try {
+              const freshNonce = WalletService.consumeNonce(p.wallet.address) ?? await provider.getTransactionCount(p.wallet.address, 'pending');
+              if (freshNonce !== p.nonce) {
+                p.nonce = freshNonce;
+                p.rawTxObj.nonce = freshNonce;
+                p.signedTx = await p.wallet.signTransaction(p.rawTxObj);
+                p.rawBuffer = connectionManager.createRawBufferPayload(p.signedTx);
+                // The recovery ladder is nonce-relative, so it is invalid now.
+                await presignBackups(p);
+              }
+            } catch (e) {}
+          }
+        }
+      },
+      {
+        atMs: 5000,
+        label: 'T-5s: DNS, socket warming & latency calibration',
+        run: async () => {
+          logger.info('T-5s: Pre-resolving DNS, warming persistent socket pool, and pre-serializing transaction buffers...');
+          for (const p of validPrepared) {
+            if (p.signedTx) {
+              p.rawBuffer = connectionManager.createRawBufferPayload(p.signedTx);
+            }
+          }
+          await Promise.all([
+            connectionManager.preResolveDns(broadcaster.rpcUrls),
+            connectionManager.preWarmSockets(broadcaster.rpcUrls)
+          ]);
+
+          // Calibrate the lead time against the endpoint we will actually write
+          // to. The right lead is one one-way flight, so the transaction touches
+          // the sequencer the instant the drop opens: fire later and a competitor
+          // is ahead of us in the FIFO queue, fire earlier and the contract
+          // reverts NotActive(). That distance is ~120ms from a home connection
+          // and single-digit ms from a host in the sequencer's region, so it has
+          // to be measured rather than assumed.
+          const writeUrl = (broadcaster.endpoints[0] && broadcaster.endpoints[0].url) || null;
+          const rttMs = await connectionManager.measureRoundTripMs(writeUrl, 5);
+          const calibration = calibrateLeadTimeMs(rttMs);
+          leadTimeMs = calibration.leadTimeMs;
+          logger.speed(
+            `Lead time set to ${leadTimeMs}ms (${calibration.source}) — ` +
+            'trigger fires one network flight before the drop opens.'
+          );
+        }
+      },
+      {
+        atMs: 2000,
+        label: 'T-2s: Pre-flight simulation',
+        run: async () => {
+          if (!validPrepared[0] || !validPrepared[0].rawTxObj) return;
+          const sim = await simulator.simulate({
+            from: validPrepared[0].wallet.address,
+            to: seadropAddress,
+            data: validPrepared[0].rawTxObj.data,
+            value: totalCostPerWalletWei
+          }, true);
+          if (!sim.success) {
+            logger.warn(`Pre-flight simulation notice: ${sim.revertReason}`);
+          } else {
+            logger.success('Pre-flight simulation passed.');
+          }
+        }
+      },
+      {
+        // Final socket top-up and GC. Both have to happen BEFORE the spin loop:
+        // the keep-alive pool is already hot from T-5s, so re-warming after the
+        // trigger would spend a full round-trip and hand back the lead time we
+        // just measured. The collection is here for the same reason — warmup
+        // (signing, re-signing, buffers, DNS, simulation) has filled the young
+        // generation, so the next allocation would trigger a scavenge, and the
+        // next allocation is the broadcast. Taking the pause now costs nothing.
+        atMs: 800,
+        label: 'T-0.8s: Final socket top-up & GC quiesce',
+        run: async () => {
+          await connectionManager.preWarmSockets(broadcaster.rpcUrls);
+          gcGuard.quiesce('T-0.8s');
+        }
+      }
+    ],
+    // The sequencer's clock is the only one that counts: if it has already
+    // reached the on-chain start time, waiting any longer is pure loss.
+    //
+    // Prefer the feed. Reading the same fact with `getBlock('latest')` costs a
+    // full round-trip (~240ms measured), so a polling check learns the drop
+    // opened well after the fact — on a FIFO chain that lateness is the drop.
+    // The feed pushes the sequencer's own timestamp with no request at all.
+    earlyTrigger: onChainStartTime > 0 ? {
+      withinMs: 2500,
+      message: '⚡ Sequencer clock reached drop time! Launching instant blast...',
+      check: async () => {
+        if (feed && feed.hasReachedTimestamp(onChainStartTime)) return true;
+        // Feed absent, or its clock went stale because the chain is idle.
+        const block = await provider.getBlock('latest').catch(() => null);
+        return !!(block && Number(block.timestamp) >= onChainStartTime);
+      }
+    } : null
+  });
 
   // Multi-RPC FIFO Sequencer Packet Flood
-  logger.speed(`>>> ⚡ FIRE! Multi-RPC Packet Flooding ${validPrepared.length} transactions across ${broadcaster.rpcUrls.length} node(s) <<<`);
+  logger.speed(`>>> ⚡ FIRE! ${broadcaster.burstOffsets.length}-pulse micro-burst across ${broadcaster.rpcUrls.length} node(s) for ${validPrepared.length} wallet(s) (Lead: ${leadTimeMs}ms) <<<`);
+  if (dropTrigger.reason === 'spin' && dropTrigger.overshootMs > 5) {
+    logger.warn(`Trigger overshot the target instant by ${dropTrigger.overshootMs}ms — warmup ran long.`);
+  }
   const startTimeMs = Date.now();
   const totalWallets = validPrepared.length;
   let completedCount = 0;
   let successCount = 0;
   let failCount = 0;
 
-  const broadcastPromises = validPrepared.map(async ({ wallet, signedTx, rawTxObj }) => {
+  const broadcastPromises = validPrepared.map(async ({ wallet, signedTx, rawTxObj, rawBuffer, backups: backupTxs }) => {
     const walletStartMs = Date.now();
     let hasCounted = false;
     try {
-      const broadcastResult = await broadcaster.broadcastFlood(signedTx);
+      let broadcastResult;
+      try {
+        broadcastResult = await broadcaster.broadcastFlood(signedTx, rawBuffer);
+      } catch (broadcastErr) {
+        // Every endpoint rejected on every pulse. This used to be swallowed and
+        // replaced with a locally computed hash, so the transaction *looked*
+        // sent: the code below then waited the full 60s receipt timeout for
+        // something that was never accepted, and the RPC's real complaint was
+        // discarded. On a FIFO chain that silent minute is the whole drop, so
+        // this now surfaces immediately with the actual reason.
+        broadcastErr.stage = 'broadcast';
+        throw broadcastErr;
+      }
       logger.walletLine(wallet.address, 'Sent', `Fastest RPC: ${broadcastResult.fastestRpc} (${broadcastResult.durationMs}ms)`);
 
       const { receipt } = await broadcaster.waitForReceiptFastest(broadcastResult.txHash, 1, 60000);
@@ -315,22 +452,34 @@ async function runPublicMint(config) {
         } catch (e) {}
 
         // --- MICRO-BURST AUTO-RETRY ON TIMING DRIFT (NotActive) ---
-        const isNotActiveError = (customError && customError.includes('NotActive')) || 
+        const isNotActiveError = (customError && customError.includes('NotActive')) ||
                                  (decodedDetails && decodedDetails.toLowerCase().includes('notactive'));
 
         if (isNotActiveError) {
-          logger.warn(`[${wallet.address.slice(0, 6)}...] Drop not active yet (node clock drift). Starting Micro-Burst Sniper retries...`);
-          
-          const retryDelaysMs = [350, 700, 1100];
-          for (let attempt = 0; attempt < retryDelaysMs.length; attempt++) {
-            await new Promise(r => setTimeout(r, retryDelaysMs[attempt]));
-            try {
-              const freshNonce = await provider.getTransactionCount(wallet.address, 'pending');
-              const retryTxObj = { ...rawTxObj, nonce: freshNonce };
-              const retrySignedTx = await wallet.signTransaction(retryTxObj);
-              logger.speed(`[${wallet.address.slice(0, 6)}...] Burst retry #${attempt + 1} firing... (Nonce: ${freshNonce})`);
+          logger.warn(`[${wallet.address.slice(0, 6)}...] Drop not active yet (arrived a block early). Firing pre-signed recovery ladder...`);
 
-              const retryBroadcast = await broadcaster.broadcastFastest(retrySignedTx);
+          // No delay before the first retry, and no signing or nonce lookup:
+          // simply discovering this revert already cost a receipt round-trip
+          // (~240ms, ~3 blocks at this chain's rate), so every further
+          // millisecond is queue position handed to someone else. The old ladder
+          // slept 350ms first and then re-signed, which put the retry roughly 8
+          // blocks behind the open — long after a 50-supply drop is gone.
+          //
+          // Later rungs are spaced by one block interval, which is the only wait
+          // that can change the answer: NotActive can only clear when the
+          // sequencer builds a block with a newer timestamp.
+          const retryDelaysMs = [0, 120, 120];
+          const backups = backupTxs || [];
+
+          for (let attempt = 0; attempt < retryDelaysMs.length && attempt < backups.length; attempt++) {
+            if (retryDelaysMs[attempt] > 0) {
+              await new Promise(r => setTimeout(r, retryDelaysMs[attempt]));
+            }
+            const backup = backups[attempt];
+            try {
+              logger.speed(`[${wallet.address.slice(0, 6)}...] Recovery burst #${attempt + 1} firing (pre-signed, nonce ${backup.nonce})...`);
+
+              const retryBroadcast = await broadcaster.broadcastFastest(backup.signedTx, backup.rawBuffer);
               const retryWait = await broadcaster.waitForReceiptFastest(retryBroadcast.txHash, 1, 30000);
 
               if (retryWait.receipt && retryWait.receipt.status === 1) {
@@ -421,8 +570,12 @@ async function runPublicMint(config) {
       }
 
       const friendlyMsg = formatError(error);
-      logger.walletLine(wallet.address, 'ERROR', friendlyMsg);
-      logger.warn(`  Technical detail: ${error.message}`);
+      if (error.stage === 'broadcast') {
+        logger.walletLine(wallet.address, 'REJECTED', `No endpoint accepted the tx — ${error.message}`);
+      } else {
+        logger.walletLine(wallet.address, 'ERROR', friendlyMsg);
+        logger.warn(`  Technical detail: ${error.message}`);
+      }
 
       Notifier.sendMintAlert({
         address: wallet.address,
@@ -489,11 +642,33 @@ async function runPublicMint(config) {
     totalSessionDurationMs: totalSessionMs
   }));
   try {
-    mintHistoryWriter.write(historyResults);
-    await mintHistoryWriter.flush();
+    for (const r of historyResults) {
+      await MintTracker.recordMint(r);
+    }
   } catch (e) {}
 
   return results;
+}
+
+/**
+ * Public mint entry point.
+ *
+ * Thin wrapper so the sequencer feed is always torn down: it holds an open
+ * WebSocket, which would otherwise keep the process alive after the CLI prints
+ * its summary, and there are several early `throw` paths above it.
+ *
+ * @param {object} config
+ * @returns {Promise<object[]>}
+ */
+async function runPublicMint(config) {
+  const state = {};
+  try {
+    return await executePublicMint(config, state);
+  } finally {
+    if (state.feed) {
+      try { state.feed.close(); } catch (e) {}
+    }
+  }
 }
 
 module.exports = { runPublicMint };

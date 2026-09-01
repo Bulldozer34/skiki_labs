@@ -172,7 +172,47 @@ ${forwardInfo.txHash ? `<b>Tx:</b> <a href="${escapeHtml(txLink)}">View Transact
       this.sendDiscord(discordEmbed),
       this.sendTelegram(tgText)
     ]);
+  },
+
+  /**
+   * Send a copy-mint execution summary alert
+   * @param {object} report
+   */
+  async sendCopyMintAlert(report) {
+    const isSuccess = report.submittedCount > 0;
+    const targetShort = `${report.targetContract.slice(0, 6)}...${report.targetContract.slice(-4)}`;
+    const whaleShort = report.whaleWallet ? `${report.whaleWallet.slice(0, 6)}...${report.whaleWallet.slice(-4)}` : 'Manual';
+
+    const discordEmbed = {
+      title: isSuccess ? '🚀 Whale Copy-Mint Executed!' : '❌ Copy-Mint Failed',
+      color: isSuccess ? 0x00E5FF : 0xFF3366,
+      fields: [
+        { name: 'Whale', value: `\`${report.whaleLabel || whaleShort}\``, inline: true },
+        { name: 'Target Contract', value: `\`${targetShort}\``, inline: true },
+        { name: 'Cost per Token', value: `${report.costEth} ETH (${report.paymentMode})`, inline: true },
+        { name: 'Wallets Submitted', value: `${report.submittedCount}/${report.totalWallets}`, inline: true },
+        { name: 'Execution Latency', value: `${report.durationMs}ms`, inline: true }
+      ],
+      timestamp: new Date().toISOString()
+    };
+
+    const tgText = `
+<b>${isSuccess ? '🚀 Whale Copy-Mint Executed!' : '❌ Copy-Mint Failed'}</b>
+━━━━━━━━━━━━━━━━━━━━
+🎯 <b>Whale:</b> <code>${escapeHtml(report.whaleLabel || whaleShort)}</code>
+📄 <b>Contract:</b> <code>${escapeHtml(report.targetContract)}</code>
+💰 <b>Cost:</b> <code>${escapeHtml(report.costEth)} ETH</code> (${escapeHtml(report.paymentMode)})
+⚡ <b>Wallets Submitted:</b> <code>${report.submittedCount}/${report.totalWallets}</code>
+⏱ <b>Latency:</b> <code>${report.durationMs}ms</code>
+━━━━━━━━━━━━━━━━━━━━
+`.trim();
+
+    await Promise.allSettled([
+      this.sendDiscord(discordEmbed),
+      this.sendTelegram(tgText)
+    ]);
   }
 };
 
 module.exports = Notifier;
+

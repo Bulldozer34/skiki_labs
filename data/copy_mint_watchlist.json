@@ -1,0 +1,5558 @@
+{
+  "generatedAt": "2026-08-31T18:18:19.810Z",
+  "network": "Robinhood Chain (4663)",
+  "criteria": "Mint Price <= $0.50 / Free, Multi-Drop Verified, Anti-Scam Filtered",
+  "totalScouted": 265,
+  "wallets": [
+    {
+      "address": "0xb9db0103db118a655057bc3d882639771074d7b4",
+      "alphaScore": 135,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 42.03,
+      "distinctDropsCount": 3,
+      "profitableDropsCount": 3,
+      "qualifyingDrops": [
+        {
+          "contract": "0x3d1a5682bfb4d75e83a370ebc2d474ef97021df2",
+          "name": "Echo Rh",
+          "slug": "echo-rh"
+        },
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x7a5f95f898cf968cac3f9d6231f03f36c3da5b0d",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x00e484da1156202e9dd341ad7ea9c908bb919e96",
+      "alphaScore": 130,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 41.8,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xf58d271dee7546c42ed3cec1c59cb8ed0cf119e5",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x7a5f95f898cf968cac3f9d6231f03f36c3da5b0d",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x331164ccc0e0daee2a92a347b51fcf48016fbd7c",
+      "alphaScore": 130,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 39.86,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xf58d271dee7546c42ed3cec1c59cb8ed0cf119e5",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x7a5f95f898cf968cac3f9d6231f03f36c3da5b0d",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0xfb44496ef7ce7dc94da1ec9f45115c80bba1778d",
+      "alphaScore": 130,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 37.48,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0x7a5f95f898cf968cac3f9d6231f03f36c3da5b0d",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x7cc0c982f0f0d43ea24e4d6dd7bdd673a4a24162",
+          "name": "Teo Keys",
+          "slug": "teo-keys"
+        }
+      ]
+    },
+    {
+      "address": "0x2175f2a2e71889b663d337914457f43357d6805a",
+      "alphaScore": 130,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 37.54,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0x7a5f95f898cf968cac3f9d6231f03f36c3da5b0d",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x8433ce2dba698afafc29422247bd5f256898cca2",
+      "alphaScore": 130,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 41.49,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xf58d271dee7546c42ed3cec1c59cb8ed0cf119e5",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x7a5f95f898cf968cac3f9d6231f03f36c3da5b0d",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x72eddda4a8302adf37adafb628ab162ae99bce47",
+      "alphaScore": 130,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 39.86,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xf58d271dee7546c42ed3cec1c59cb8ed0cf119e5",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x7a5f95f898cf968cac3f9d6231f03f36c3da5b0d",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x0e867af6e3aa2a0789bc250d5855addf320cf5c6",
+      "alphaScore": 110,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 37.02,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0x4c2c840b70eff96e37e34b5ca06341c045a2f8bb",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x7a5f95f898cf968cac3f9d6231f03f36c3da5b0d",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x2b5b35ac5a2d5c1224337ba86bf3816abee69da3",
+      "alphaScore": 107,
+      "winRatePercent": 7.7,
+      "netTotalProfitUSD": 4.46,
+      "distinctDropsCount": 13,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0x3d1a5682bfb4d75e83a370ebc2d474ef97021df2",
+          "name": "Echo Rh",
+          "slug": "echo-rh"
+        },
+        {
+          "contract": "0x1fca8524825e861449f3f1a6272bab19a42313c6",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x33d91811857c1711ce0f3efb248553e4f1714357",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x62054c05cd07ecbba70871d7fd7e2e61abd5427b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x44b3206fd9029b1ab39941b0cf9ef860abd5bce3",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xe3cfad067a1bfde418dd1e43b858f626205d3d4c",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xab32525bc1d5fd6587923a280cfadce33990b566",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x66309d7526814cd6dd9f7bd1099899c8c38a9e79",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x7c8fdbdd79e1acd1e8a94087b93e53db0a328066",
+          "name": "The Computer Games",
+          "slug": "the-computer-games"
+        },
+        {
+          "contract": "0xb535f927dc737df4a111d97173576134c84b0a93",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa0a43c0898f4535118120c7fb509d957889da3d7",
+          "name": "Numa Partner Pass NFT",
+          "slug": "numa-partner-pass-nft"
+        },
+        {
+          "contract": "0xbca27dafe70dcf4f028aeca9c194941745b74954",
+          "name": "Volt Nft",
+          "slug": "volt-nft-229029842"
+        },
+        {
+          "contract": "0xab1a129f10bfe36d0724ca5c4e15071d78afce6b",
+          "name": "HoodRogues",
+          "slug": "hoodrogues-783220835"
+        }
+      ]
+    },
+    {
+      "address": "0x001733dbb38b3144c3a94e63ec8a8943f7d80d3e",
+      "alphaScore": 106.88,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 8.44,
+      "distinctDropsCount": 4,
+      "profitableDropsCount": 4,
+      "qualifyingDrops": [
+        {
+          "contract": "0x1ce9a9c89cd24bbe7ea3eb0f1f36b2959f175a5e",
+          "name": "cuty cats",
+          "slug": "cuty-cats-44983695"
+        },
+        {
+          "contract": "0xda55a6924c9ca5ef17adec1c09c57cbaafaf6eea",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        },
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x0ee056795ae0e64e8132d5222f7d81a230bbf314",
+      "alphaScore": 105.82,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 10.41,
+      "distinctDropsCount": 3,
+      "profitableDropsCount": 3,
+      "qualifyingDrops": [
+        {
+          "contract": "0x3d1a5682bfb4d75e83a370ebc2d474ef97021df2",
+          "name": "Echo Rh",
+          "slug": "echo-rh"
+        },
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0x1ce9a9c89cd24bbe7ea3eb0f1f36b2959f175a5e",
+          "name": "cuty cats",
+          "slug": "cuty-cats-44983695"
+        }
+      ]
+    },
+    {
+      "address": "0xfc4bbb29ffc7f45ca921fa3c5224cc2668e51cd3",
+      "alphaScore": 105.82,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 10.41,
+      "distinctDropsCount": 3,
+      "profitableDropsCount": 3,
+      "qualifyingDrops": [
+        {
+          "contract": "0x3d1a5682bfb4d75e83a370ebc2d474ef97021df2",
+          "name": "Echo Rh",
+          "slug": "echo-rh"
+        },
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0x1ce9a9c89cd24bbe7ea3eb0f1f36b2959f175a5e",
+          "name": "cuty cats",
+          "slug": "cuty-cats-44983695"
+        }
+      ]
+    },
+    {
+      "address": "0x454cbc6bd2eebad879aac8656c8096c839c7c39b",
+      "alphaScore": 100.82,
+      "winRatePercent": 75,
+      "netTotalProfitUSD": 10.41,
+      "distinctDropsCount": 4,
+      "profitableDropsCount": 3,
+      "qualifyingDrops": [
+        {
+          "contract": "0x3d1a5682bfb4d75e83a370ebc2d474ef97021df2",
+          "name": "Echo Rh",
+          "slug": "echo-rh"
+        },
+        {
+          "contract": "0x28ebdcabf5fa9e024167bcab8b8ba7d0dfa9e9dd",
+          "name": "DOCTOR PFP",
+          "slug": "doctor-pfp"
+        },
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0x1ce9a9c89cd24bbe7ea3eb0f1f36b2959f175a5e",
+          "name": "cuty cats",
+          "slug": "cuty-cats-44983695"
+        }
+      ]
+    },
+    {
+      "address": "0xd881dcb24c01fd38deaae593c5f58cbbfd415916",
+      "alphaScore": 100.82,
+      "winRatePercent": 75,
+      "netTotalProfitUSD": 10.41,
+      "distinctDropsCount": 4,
+      "profitableDropsCount": 3,
+      "qualifyingDrops": [
+        {
+          "contract": "0x3d1a5682bfb4d75e83a370ebc2d474ef97021df2",
+          "name": "Echo Rh",
+          "slug": "echo-rh"
+        },
+        {
+          "contract": "0x28ebdcabf5fa9e024167bcab8b8ba7d0dfa9e9dd",
+          "name": "DOCTOR PFP",
+          "slug": "doctor-pfp"
+        },
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0x1ce9a9c89cd24bbe7ea3eb0f1f36b2959f175a5e",
+          "name": "cuty cats",
+          "slug": "cuty-cats-44983695"
+        }
+      ]
+    },
+    {
+      "address": "0xe3e500730802c4c10c6df9caa4a123907cd2eedc",
+      "alphaScore": 93.14,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 4.07,
+      "distinctDropsCount": 3,
+      "profitableDropsCount": 3,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xf58d271dee7546c42ed3cec1c59cb8ed0cf119e5",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x3028163f109bbc774530e54070e2ff2e431090ff",
+      "alphaScore": 92.5,
+      "winRatePercent": 66.7,
+      "netTotalProfitUSD": 10.41,
+      "distinctDropsCount": 3,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xd7d7f0fe2e3ccd029e2004958eb618a2beab0cfa",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0x33d91811857c1711ce0f3efb248553e4f1714357",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x6e727b2cf9729192b93c2378615fe7685381d08a",
+      "alphaScore": 90.26,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 5.13,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0x3d1a5682bfb4d75e83a370ebc2d474ef97021df2",
+          "name": "Echo Rh",
+          "slug": "echo-rh"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x53207097b785f3ff4f2a89135328c35fcd6d3858",
+      "alphaScore": 89.94,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 4.97,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0x3d1a5682bfb4d75e83a370ebc2d474ef97021df2",
+          "name": "Echo Rh",
+          "slug": "echo-rh"
+        },
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        }
+      ]
+    },
+    {
+      "address": "0x22195b9bbcb9d9aaf1da7608e0564caab936144b",
+      "alphaScore": 89.94,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 4.97,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0x3d1a5682bfb4d75e83a370ebc2d474ef97021df2",
+          "name": "Echo Rh",
+          "slug": "echo-rh"
+        },
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        }
+      ]
+    },
+    {
+      "address": "0x4745116b9f04f89b9bd72ea04311fee979498967",
+      "alphaScore": 88.5,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.75,
+      "distinctDropsCount": 3,
+      "profitableDropsCount": 3,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xb4b1f21d12f021918d53ed442d152cc55a3c2c57",
+      "alphaScore": 88.5,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.75,
+      "distinctDropsCount": 3,
+      "profitableDropsCount": 3,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x9d0ba1dfdbe36a2d84b0a80cbff5dfaaf96dadcd",
+      "alphaScore": 87.04,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 3.52,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xf58d271dee7546c42ed3cec1c59cb8ed0cf119e5",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xb21ef681216081074d2978c2a4d029f06a70935b",
+      "alphaScore": 87.04,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 3.52,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xf58d271dee7546c42ed3cec1c59cb8ed0cf119e5",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xd71365a4a1238de94971eb5db9a57f85ae70d8e1",
+      "alphaScore": 86.4,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 3.2,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xda55a6924c9ca5ef17adec1c09c57cbaafaf6eea",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x042a5abdc547428f0afce138e5ec59002b3b1ba3",
+      "alphaScore": 82.46,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.23,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xb59779634019e565eec112227d868a9080dc54a1",
+      "alphaScore": 82.46,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.23,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x386f23fd05ba10e740269852f3830978189ba542",
+      "alphaScore": 82.46,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.23,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xa0f9166c7949ffd416b2fbda6ae9b078399ef453",
+      "alphaScore": 82.46,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.23,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x6927a0d2a5e1ce3e5046a3d1d1b4dab7cbe7f41c",
+      "alphaScore": 82.46,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.23,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x6880c355c73e9538313c5203c7783cc56609f044",
+      "alphaScore": 82.46,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.23,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x7bee10a601d3473c524e4e5e94f1de2911f1be12",
+      "alphaScore": 82.46,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.23,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x2be899e008beb6236fa32136d8aea0ce8acc5caa",
+      "alphaScore": 82.46,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.23,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x54126697b29747fe729d7d85f268c6f7bd106958",
+      "alphaScore": 82.46,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.23,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x780d28b6f7edd1e55a3e457f52edcbfeeecbab79",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x41d8ab1c42ee79598331f4fc57ab706c49f17e4f",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x2e2496d57cd72e28967c4453105efc9a86528fe4",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x2a0e6c4a8d1ae0b8fa492ba36fd693b2697c1ba8",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x988a26991d00f736ef624634e6385dedee254f1c",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x91c8e229d6a2d50fbfb210795f794e11eab0a95f",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x2d1bbe7d295a108c7878f761f48cd92760a93ec4",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xdb204704a5afa4d4b7618a980c83c5a644fc6335",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x6a9fa33b2b5f8efecb2d087174ef3ae343f72492",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x380765539b3e556a93d106707c3fc0891d3e6402",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x59c060dde01f0b39334f6225bac22b19511be579",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x51330c851ce1ae25332c22fb684217faa8f0e8c3",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x68cbbb81f8af4275e93b596ae77d04508b0bd87f",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x4b5fa412bc3a8dcbf3c5d476aaf9fafed5cbb81b",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x47ae0b5350f1bdf9aa410c1730b54de11ac99484",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x28bf2175262efe5385f12bcd06cf34072cb5870a",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x1f3f28c0063eaf80d8e171c1908a895ad29845da",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x53678225382cf10452a8f729da4caf8bf2d28c65",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xba39f683ab12a8b22beea8478f3862dac38bcb37",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x78fbd3d497945245bcc3887a796f0a6dfedd4838",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x1b697788203d6277363ac9b48488b955d33a7438",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x650573c654d2ecc6197335a77770ef3590cf4278",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xe9d14eff358d0cbbb8f08cba37611b3b8070f8f9",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xdef41845771fc08c0fc2fb441c9609935e4cac81",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x5ab4308ab45773be4bd56b4c17f12a9af684cb93",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x5c02ede955797037259300652379437935c55b95",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xd2c94becb060adaf4ca7537930ba798e2c707844",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x5ca58c2a23dafe70a17c20d0e3514fa43de12532",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x09ff85d2a03310c35383b8c3999b3c282cdb3d23",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x065ac22943c9e5dbdf4545f26eafb47dcd844446",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xf0878353ed9d20494a6368582d84c0cf724d0805",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x9aaf946f1d49303898e98ec257d1a2cc02faf0d7",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x492e8cdcb9ce441a31aa389a1fcb510d63b36ccc",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x55cb11428f8c85429f31b7a1c8d96a872177bd88",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x9c097d16b2460a0ee837e9c5c11756ec51f6b4db",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x546a0e7c0e7785aafac360b865a7f08151d50f4f",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xaabe7c0f7260a96008ca25bc83110709999bd4d5",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x53302465f882691301aa82e7b6615bb57bc35769",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xb0bbd139435d484b753cd0f62f33f275d6d76462",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xbf14501575def90bc2622ff035b40aee2897d03c",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xa7cb150022768af2deaceddb402513cf792c2685",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x132903e06340140dd6a1cc5ea36b9cb0bae50a7c",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x38a384584f80ee33d803b8b74a4837ffccf05ce2",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x677eecde7ad7bc2de1aa9cd74969694cafde7fec",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xb57e20c15c19d172af38211170c1f7181a49a3b4",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x81f3255acb4646b5194025c06b5f6d82a09798b4",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x48a22f86238ab9755dc39ea41de56a5cd4691300",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xb4f503cff8893d4ecc1043ea36e587004d746d71",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x9cbc91efd009ccc6e887ec28d261ff9b71f28d2f",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xd9c2c121685d66da5704adb6f16a68225b4f4c14",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x5f48872c536f12a969d13ee24632f4b8f4472ed8",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xa5d858a74ddcfec797b546e58703fab77c7edd48",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x60b8dd3c216548036622b3656d73b164d74f8313",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xa999dfd18e475ca23211c57d596b036447e9b898",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x7c4798869883dc6d731d2ceab669745443013f31",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x5a34e62d1ae994024ed3b39de75e93025a46f2fe",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xac9606c0639204303a34e461a34343c7ef018b18",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x4f0e46b8a54faaa9fdd387499e721d80d654378f",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x93392d29bf9b47bbe1325e4512ffbeb9486eb149",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xab6c441437ddf01d9a7c631ca0ea6d6d6beaa98a",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xa7b6a956b864417438edb2ca42df083b555b07ec",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xe7007b9e613f3ce5cddd2762268be9ddfeacc171",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xfb962f6d1061a471dd6b880433403c5e00cb6e2d",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xfa48ca39e2e480ba3927968b4d92d1ba37c463fa",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x011c878a2231d1df12b58e79bf1d4390ab4d11a1",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xbd3d5a6e3a4d6466c6de09723ceb7fe9d3ac8b90",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xddafc71b7e6a45cc77af7ac6c14bb5ef05341673",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xa58c640e4ba9650fca79512466fe2808d409426f",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xac681f799c429612e008c1966d12637ab9e7394f",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x960a18521c420c537dd59e38a0c1c02ae9ad9b6e",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x0aa61e60d2d64710f3951f6dfe274fc577383a62",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x3ad3eb5076d732dba1fba5a915a8848d0de8cca4",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xee508d1320ba6bb425b733f79dd32a91be50edee",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xf676fde2386ded3a476a23b1d6950bafdd7254ff",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xff5a114b3e315a5a28438f330b9433c217bc5e0a",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xafc80d0816c2f234dd25ab684cba482ae52f3e2f",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x48fbf575111f2350cee0e7c28903e5964ee64ce1",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x548f99e94253b9058535829d9ca50dc1a6860f74",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xd8404a50cc8dd205c83fe0fb0ad5b3efc7c5fe98",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x623bb5d9a9f5cb5254ed8db355b0ac030650f57a",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x0b3e1c67713958ad180e0cd227b6a29de36bcbac",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x75ea9f1a24392d09b9846ff14bd5c1499e2b4ff8",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x8dc3846e708f74b5d63044adf4a635c5a628db15",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x64e460e99227ee99a9f741c61db1c0e997746abf",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x9cbd53f826e87499c870c5979b0dd66443630690",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xc0de4a295aa92abe8d96a403d8d26cae0cf7ac26",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xe4a65817225ec806a0af3b8a46a9c008ef94f9aa",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xd926f2cea9f96906823e082aa837463a90df224e",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x76dfe93c2728dbd382a878a2539f057787ca4272",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x94a426eb6dd790bb3f4ca20abad51f7c5c335662",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xccbb447f0d52ec97ff91c71bc955131ba655c5cc",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x6860087bd7b68528774bf93734d5e00fa22b9772",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xf5bf7387c23ccf6358d32cf306ad6f9e0a18e47b",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xf1a62cfaee2cccb09039e950180bf624e57f8e06",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x7e4b5d7e63bf66ea80592dc75094cb7e50b10ad1",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x9442ab8d854c9c3b8c65a345d1d416c502578b91",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xba58e2346cf956ae1c10925be91bd69c99ef8e27",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xacb3816673213218835ed31c38f5a08846a100a5",
+      "alphaScore": 82.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.19,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xaa550ab5e42eabadf781ec02cd065317a0cf9beb",
+      "alphaScore": 82.14,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.07,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0xbd387ca521b2325a303436fbaac20926a7b842e5",
+      "alphaScore": 82.14,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.07,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0xbaba1adecf0f32a44999047a882e6c7376ad3946",
+      "alphaScore": 82.14,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.07,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x0694580c722c01e65125a2013d3e83a360d78faa",
+      "alphaScore": 82.14,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.07,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x07af501133c30d90384cddb696d59f7d9ed468e6",
+      "alphaScore": 82.14,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.07,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x7dcf0fbd3f1d70f692ebb800792fe00174c2b0cd",
+      "alphaScore": 82.14,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.07,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x8ec1ca3e33aed4d35453eb6775d59a23e63cc163",
+      "alphaScore": 82.14,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.07,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0xc7c3e522c7070993cffcde9650f40dd48cb7e519",
+      "alphaScore": 82.14,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.07,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0xbe8c4feb5106e77aa6c02661847cadf1d161e646",
+      "alphaScore": 82.14,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.07,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0xe3ed10d843c961f8ee0d2dfc7af82cf381436f3a",
+      "alphaScore": 82.14,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.07,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x316547d789e4f43a952bf14e3c72cd53bc155208",
+      "alphaScore": 82.14,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.07,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0xb5981dfe1ac11097e10305e85b8b1061db64f01b",
+      "alphaScore": 82.14,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.07,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x61bafe4dbe8866eaa4ef2b2003e655025ed7a142",
+      "alphaScore": 82.14,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.07,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x4fb459424f7851c50a9973be9367b1fbc8e6a6a5",
+      "alphaScore": 73.82,
+      "winRatePercent": 66.7,
+      "netTotalProfitUSD": 1.07,
+      "distinctDropsCount": 3,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0x992b0dbc19c51ed4a03c4c4e9a79317022c873ca",
+          "name": "Quotrons Desktop",
+          "slug": "quotrons-desktop-922609617"
+        }
+      ]
+    },
+    {
+      "address": "0x41a91cc2e81b53761b8fb4931882e5620967b118",
+      "alphaScore": 73.14,
+      "winRatePercent": 40,
+      "netTotalProfitUSD": 1.07,
+      "distinctDropsCount": 5,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0x3bb0a05251722599056c99113be06ba21d10223a",
+          "name": "ODDCAST",
+          "slug": "oddcast"
+        },
+        {
+          "contract": "0xe811a782e46eb186a6764b3d91ad0516e65f7b4b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x992b0dbc19c51ed4a03c4c4e9a79317022c873ca",
+          "name": "Quotrons Desktop",
+          "slug": "quotrons-desktop-922609617"
+        }
+      ]
+    },
+    {
+      "address": "0x1c58bc2bb6e5a402ce621b23cdd94c0fb0adf8a8",
+      "alphaScore": 71.08,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 5.54,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0x1ce9a9c89cd24bbe7ea3eb0f1f36b2959f175a5e",
+          "name": "cuty cats",
+          "slug": "cuty-cats-44983695"
+        },
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x7a407c2c8ec2335cd797d19fc19afc8cfa119795",
+      "alphaScore": 70.9,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 5.45,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0x28ebdcabf5fa9e024167bcab8b8ba7d0dfa9e9dd",
+          "name": "DOCTOR PFP",
+          "slug": "doctor-pfp"
+        },
+        {
+          "contract": "0x1ce9a9c89cd24bbe7ea3eb0f1f36b2959f175a5e",
+          "name": "cuty cats",
+          "slug": "cuty-cats-44983695"
+        }
+      ]
+    },
+    {
+      "address": "0x15814252fefa45f55bf1b08578a040355a7ce693",
+      "alphaScore": 70.9,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 5.45,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0x1ce9a9c89cd24bbe7ea3eb0f1f36b2959f175a5e",
+          "name": "cuty cats",
+          "slug": "cuty-cats-44983695"
+        },
+        {
+          "contract": "0x1df57a91ac47f3afe15c018676f81144392ad9ef",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x842750d7ed5824fa6c3976c670829ddebe465380",
+      "alphaScore": 68.92,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 4.46,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0x3d1a5682bfb4d75e83a370ebc2d474ef97021df2",
+          "name": "Echo Rh",
+          "slug": "echo-rh"
+        },
+        {
+          "contract": "0x879282f8aa4fb98962b09b0e22f18472ec91e0ba",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0xddc1295fb6ff4487d48eca052e37da6d570eeafd",
+      "alphaScore": 66.02,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 4.73,
+      "distinctDropsCount": 4,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0x3d1a5682bfb4d75e83a370ebc2d474ef97021df2",
+          "name": "Echo Rh",
+          "slug": "echo-rh"
+        },
+        {
+          "contract": "0x7c8fdbdd79e1acd1e8a94087b93e53db0a328066",
+          "name": "The Computer Games",
+          "slug": "the-computer-games"
+        },
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x52eff600e9a0317981c1e3ee882c4b6d6e053f5d",
+      "alphaScore": 65.68,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 3.44,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xda55a6924c9ca5ef17adec1c09c57cbaafaf6eea",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x811d3ae3e52cf2ea887edc04b56402901a771ece",
+          "name": "Dumb Brokers",
+          "slug": "dumbbrokers"
+        }
+      ]
+    },
+    {
+      "address": "0xae697710e46671de4d4ce2f8b596082a8e5d0217",
+      "alphaScore": 65.28,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 2.64,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0x1df57a91ac47f3afe15c018676f81144392ad9ef",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xda55a6924c9ca5ef17adec1c09c57cbaafaf6eea",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x2018e3bb79671b519fe7453f3141fa9fe4707a14",
+      "alphaScore": 62,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 1,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        },
+        {
+          "contract": "0x28ebdcabf5fa9e024167bcab8b8ba7d0dfa9e9dd",
+          "name": "DOCTOR PFP",
+          "slug": "doctor-pfp"
+        }
+      ]
+    },
+    {
+      "address": "0xd6e9afc153bf3ba7dbae622eef0a441ac10d0c86",
+      "alphaScore": 61.66,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.83,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x1df57a91ac47f3afe15c018676f81144392ad9ef",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x6ea612c31342a3b94a59fbbd6625158da1bd22aa",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0x992b0dbc19c51ed4a03c4c4e9a79317022c873ca",
+          "name": "Quotrons Desktop",
+          "slug": "quotrons-desktop-922609617"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x9e81ba73d137b5515129bfa6b4a57491461eb235",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0x992b0dbc19c51ed4a03c4c4e9a79317022c873ca",
+          "name": "Quotrons Desktop",
+          "slug": "quotrons-desktop-922609617"
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x999a313285b9cc0dd30d12b924bb0f1df4eefdb5",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xb36cb3d614629b9c41e1dc1a6cfa0faa957e4c48",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x9e0adb49ac1177fdbee32007193ef9a781470f5e",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xe28e93cc6491241d3032219d19e33b0c95c61713",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xbf8b715a4e6f8479c5c9296ac34b059a7b5aaf4b",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xec825ffbb5d3bc51ca79159be6c7a1d53d24db79",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x18749d8b07c241d6f5ae384b28dc4e066c9107fd",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x18b5125475a6ed6be67acb2859f1be25c33268e6",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x57193ae8d32cdbaf6fb3af422cc7cc20732291b6",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x6437d864c3bae18bf742edd6aa008623213d9d7c",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x52bf9b131efd6fee6c07da356c95624236e84099",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x02f73b1b07660d2b40b5599aa48bcef231b44009",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xb41eff8bba1bea7d34cbbdb3f33f44fa7eedbdc8",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x3670b151daadea3597736f9ef23e73e6f09f9eab",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x9de832eff0563d7cc70aa1b286a21268d3ad502e",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xabfd47b5fcfda9bf70506d3f203956fe2560654b",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xb5654e6a3ac67043dff7f429b7e7cb7d8e439db0",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x069bfd359381cd84b510aa35bd61a266707bee04",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x743838c242799db6055eea9f1e534f06d23b4cee",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x07bea2edd6ee5716018923efb11909401eb756e3",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xf3df4d98b104d4ef8560d39a8ec8b2caed7509a0",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x055bec913ecc7b457b130420e0e82ac8b2cb0a3f",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x5e42123211c54fdc54e0b34591e09a6f01401741",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x0af827b8d2fb55fa84a1c3884336460e63b0fbb4",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x055410d02b03d7bba4f3f8cfe12d197989b1bd40",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x0af26ba9f915a49b5575c7326161c9cfc63d512c",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xe5aa3359e3235e773fd51b338d354ef34d1e92a5",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x6a2b3450a891ca60e1d8edbff75256a312ec5fb3",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x7f53a6fb2cba65e020ecb2d9f6f52e1a9defc4da",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x9d230de16fb346ba6ef4f4c3f43349cf1097e983",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x6494bd1e5f956f1a71ee998d7ef6cbbb21c35f22",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xdd895bef3108f5b66a3687f5b29e4000e8234fa9",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x956e4f01b08eb42cd8860ade96cfe5fd3b53c563",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x38ba88712314e26ac4de027531a9f2bb182fe629",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xce3215451cd5200bdedb3e99ef127f89dc0a55ef",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x603de6068249b928b574e40071a48956aa1e55a1",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x56a66126293aba8e576c6b902a309eebbee06aa8",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xfc1fe7067d76343c6df566da6413cd078d7a046e",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x98804bb526af288f96a60a8ec76f4ef1ab150ec0",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x6a48fb739b37b6cad89abc432b4f043f4e4f2090",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x241ff9a0664d5170526f8afe8294c5af1ab26d06",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x1e4dc711fff5a49246cb73155adbd64a210990a1",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x353414ab77b09ddb7993c3871b77431ca03a96a4",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xe9fdac6735b7afe737306c9e2c03259e88c42116",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xf82ee6e70496d90c4a7b4c01dfe8be9590780514",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x6d06799b7d47acdadd81797c4103a36561d05687",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x6bc631b77e1688100f3d4bda7e42c7bd64588a23",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x16076645a9a832d01658f904976dc2722a504bd6",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x6c6150e7ee780ebe2718af95dfcbaa8872ad8a52",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x7a0773aa08bca6b4b2d0abd9656f21c11763153b",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x092a2eb97871b0cd1b5822eb3a2109497446efdb",
+      "alphaScore": 61.36,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x479fd93e990688f226f97ff343011800f4f785cd",
+      "alphaScore": 61.36,
+      "winRatePercent": 25,
+      "netTotalProfitUSD": 0.68,
+      "distinctDropsCount": 4,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xb37e062f32640f497d30d0e7002ac418ed085b38",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        },
+        {
+          "contract": "0xc2ac5fd27dd8e547b81925012d964aea812a24be",
+          "name": "CURIOSITY",
+          "slug": "curiosity-967459376"
+        },
+        {
+          "contract": "0x28ebdcabf5fa9e024167bcab8b8ba7d0dfa9e9dd",
+          "name": "DOCTOR PFP",
+          "slug": "doctor-pfp"
+        }
+      ]
+    },
+    {
+      "address": "0xeb8985eb994e555d27fc94610886e22476dcfb00",
+      "alphaScore": 61.1,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.55,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0x28ebdcabf5fa9e024167bcab8b8ba7d0dfa9e9dd",
+          "name": "DOCTOR PFP",
+          "slug": "doctor-pfp"
+        },
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0xebc54a9bc67fa676e0240d5327676eb9f30920da",
+      "alphaScore": 61.1,
+      "winRatePercent": 25,
+      "netTotalProfitUSD": 0.55,
+      "distinctDropsCount": 4,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0x992b0dbc19c51ed4a03c4c4e9a79317022c873ca",
+          "name": "Quotrons Desktop",
+          "slug": "quotrons-desktop-922609617"
+        },
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x1592a17701c315545898389f133792cc1d3694cf",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xe811a782e46eb186a6764b3d91ad0516e65f7b4b",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0xa54137716d58a112a3b07f7e1ad4ac16975cfcab",
+      "alphaScore": 61.1,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.55,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x992b0dbc19c51ed4a03c4c4e9a79317022c873ca",
+          "name": "Quotrons Desktop",
+          "slug": "quotrons-desktop-922609617"
+        }
+      ]
+    },
+    {
+      "address": "0x5ff2f44ad9c0c77c395c85f2a0a03cac3cabd285",
+      "alphaScore": 61.1,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.55,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x1592a17701c315545898389f133792cc1d3694cf",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x12ad2b4b6d817d50d2e034ee538a67e877dd34d5",
+      "alphaScore": 61.06,
+      "winRatePercent": 22.2,
+      "netTotalProfitUSD": 1.02,
+      "distinctDropsCount": 9,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0x3bb0a05251722599056c99113be06ba21d10223a",
+          "name": "ODDCAST",
+          "slug": "oddcast"
+        },
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0x28ebdcabf5fa9e024167bcab8b8ba7d0dfa9e9dd",
+          "name": "DOCTOR PFP",
+          "slug": "doctor-pfp"
+        },
+        {
+          "contract": "0xab09450d8458a3809ada5c9cd5521ab1c5eb3480",
+          "name": "Dumb Brokers",
+          "slug": "dumb-brokers"
+        },
+        {
+          "contract": "0x33d91811857c1711ce0f3efb248553e4f1714357",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x879282f8aa4fb98962b09b0e22f18472ec91e0ba",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x992b0dbc19c51ed4a03c4c4e9a79317022c873ca",
+          "name": "Quotrons Desktop",
+          "slug": "quotrons-desktop-922609617"
+        },
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x953d2d5b6991793843b66a60aa1faac3b3187bf9",
+      "alphaScore": 61.02,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.51,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0x28ebdcabf5fa9e024167bcab8b8ba7d0dfa9e9dd",
+          "name": "DOCTOR PFP",
+          "slug": "doctor-pfp"
+        }
+      ]
+    },
+    {
+      "address": "0x9fdc248d3c630165ea2c44fbc4d67b579ee4b074",
+      "alphaScore": 61.02,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.51,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0x28ebdcabf5fa9e024167bcab8b8ba7d0dfa9e9dd",
+          "name": "DOCTOR PFP",
+          "slug": "doctor-pfp"
+        },
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        }
+      ]
+    },
+    {
+      "address": "0x4c1a6e8bdf2305949e0990ff2a34304a13a5e807",
+      "alphaScore": 61.02,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.51,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xe3cfad067a1bfde418dd1e43b858f626205d3d4c",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x217414c61e66195ce5a8cc9a1a3ae025aec54eeb",
+      "alphaScore": 61,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.5,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x265f5a9b3181ef516d755cb890a24a98e7d641ce",
+      "alphaScore": 60.9,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.45,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0x7cc0c982f0f0d43ea24e4d6dd7bdd673a4a24162",
+          "name": "Teo Keys",
+          "slug": "teo-keys"
+        },
+        {
+          "contract": "0x1df57a91ac47f3afe15c018676f81144392ad9ef",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0xc20a0c4ac35e252954a23c1d01ba6ea4411d032a",
+      "alphaScore": 60.56,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.28,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x1df57a91ac47f3afe15c018676f81144392ad9ef",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x12b1c1956a676edde2dd06d8138b39df4e6ab0a2",
+      "alphaScore": 60.46,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.23,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        },
+        {
+          "contract": "0xc2ac5fd27dd8e547b81925012d964aea812a24be",
+          "name": "CURIOSITY",
+          "slug": "curiosity-967459376"
+        }
+      ]
+    },
+    {
+      "address": "0x28861900791bfb2d936c3ae8408f5535a9eba9c2",
+      "alphaScore": 60.1,
+      "winRatePercent": 33.3,
+      "netTotalProfitUSD": 0.89,
+      "distinctDropsCount": 3,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0x3d1a5682bfb4d75e83a370ebc2d474ef97021df2",
+          "name": "Echo Rh",
+          "slug": "echo-rh"
+        },
+        {
+          "contract": "0xb535f927dc737df4a111d97173576134c84b0a93",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xab1a129f10bfe36d0724ca5c4e15071d78afce6b",
+          "name": "HoodRogues",
+          "slug": "hoodrogues-783220835"
+        }
+      ]
+    },
+    {
+      "address": "0x5e40e6eb4e56fd57f4affd04efef625be0b2d76a",
+      "alphaScore": 59.34,
+      "winRatePercent": 33.3,
+      "netTotalProfitUSD": 0.51,
+      "distinctDropsCount": 3,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe9581896bb9ded4ebdf46f5bbc816d2c23788ec4",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xe811a782e46eb186a6764b3d91ad0516e65f7b4b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        }
+      ]
+    },
+    {
+      "address": "0x88350246cad0cfd02b62641ea650c27e07064e92",
+      "alphaScore": 59.34,
+      "winRatePercent": 33.3,
+      "netTotalProfitUSD": 0.51,
+      "distinctDropsCount": 3,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0x28ebdcabf5fa9e024167bcab8b8ba7d0dfa9e9dd",
+          "name": "DOCTOR PFP",
+          "slug": "doctor-pfp"
+        },
+        {
+          "contract": "0xab32525bc1d5fd6587923a280cfadce33990b566",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0xfa98dc1f020acd517f4d0eb96cb13a11c05b206a",
+      "alphaScore": 58.2,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.65,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xdfcc8967082da0ea4a752ddec59f2a1b5d1b35d5",
+      "alphaScore": 58.2,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.65,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x83cb51f1ac95e0da46866f7a5454f9a72ecafcd7",
+      "alphaScore": 57.38,
+      "winRatePercent": 100,
+      "netTotalProfitUSD": 1.35,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 2,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad37f78c80720b6f576ea7f9d19c64f31d84296b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x811d3ae3e52cf2ea887edc04b56402901a771ece",
+          "name": "Dumb Brokers",
+          "slug": "dumbbrokers"
+        }
+      ]
+    },
+    {
+      "address": "0x9c661217e92e60bb5b86fef523dc9f6724417707",
+      "alphaScore": 51.52,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.48,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0xf701013cb5e33f15d2b5d4e2a12294f58cb8588a",
+      "alphaScore": 48.6,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.21,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0xecbf8d98338cad1daa7ac918a5713593ea373c29",
+      "alphaScore": 42.86,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 2.33,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0x28ebdcabf5fa9e024167bcab8b8ba7d0dfa9e9dd",
+          "name": "DOCTOR PFP",
+          "slug": "doctor-pfp"
+        },
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        }
+      ]
+    },
+    {
+      "address": "0x0b426ed0fd85c78f1826f10e8c3a31f82781cd42",
+      "alphaScore": 37.32,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 2.12,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0x52c87dfa3a1809d1c8b24e69be04631fff4b0ad3",
+          "name": "Robos Broker",
+          "slug": "robos-broker"
+        },
+        {
+          "contract": "0x811d3ae3e52cf2ea887edc04b56402901a771ece",
+          "name": "Dumb Brokers",
+          "slug": "dumbbrokers"
+        }
+      ]
+    },
+    {
+      "address": "0x22f7231183a3a67b14cad0b2eff6d422629ea837",
+      "alphaScore": 35.9,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.37,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0xf1d81cc5ea032eff16ff9a9fb838c527cc4d22ce",
+      "alphaScore": 35.42,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.35,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x7a1824944103b58cf00db74e6ed8ed407e621188",
+      "alphaScore": 35.18,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.8,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0x4c2c840b70eff96e37e34b5ca06341c045a2f8bb",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x811d3ae3e52cf2ea887edc04b56402901a771ece",
+          "name": "Dumb Brokers",
+          "slug": "dumbbrokers"
+        }
+      ]
+    },
+    {
+      "address": "0x87c89f5f027b0dc4626e92d92e5964ff8661df84",
+      "alphaScore": 34.54,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.5,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x2125751f347aa7776adb1e1d363927e8afcc5bc0",
+      "alphaScore": 34.54,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.5,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x26e5448c94cb478fa813de3d01952410620c17cb",
+      "alphaScore": 34.3,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.62,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xd844510e2a8e0d9b7552bc3c0b89be5178773ead",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x5d1a0229bcc9cc0cfdede41ac686f63da0cad81d",
+      "alphaScore": 34.3,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.62,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xd844510e2a8e0d9b7552bc3c0b89be5178773ead",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x1b74b46d39ddbfb7d643dca37d0b4bffde4e28ec",
+      "alphaScore": 34.12,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.27,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0x4c2c840b70eff96e37e34b5ca06341c045a2f8bb",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x811d3ae3e52cf2ea887edc04b56402901a771ece",
+          "name": "Dumb Brokers",
+          "slug": "dumbbrokers"
+        }
+      ]
+    },
+    {
+      "address": "0x4070e40fc3e382437ab7bac2249205d276bdd15a",
+      "alphaScore": 34.06,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.23,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0x52c87dfa3a1809d1c8b24e69be04631fff4b0ad3",
+          "name": "Robos Broker",
+          "slug": "robos-broker"
+        },
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        }
+      ]
+    },
+    {
+      "address": "0x43948bababa753a587fc475ced55c74760b716fc",
+      "alphaScore": 33.42,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.28,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x9295d72a7810430e57d6f30c2ba81be6d802cc1d",
+      "alphaScore": 32.56,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.11,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0xe1188683ef2457a2f208dbadca95ec68e0930cfc",
+      "alphaScore": 32.56,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.11,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x968525c5d067a57cbf1343d46ca0b0908807ee66",
+      "alphaScore": 32.56,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": 0.11,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0xf0dea48be1fb434d9c095a76e458a60e77c77363",
+      "alphaScore": 31.96,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": -0.01,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0x8a39608aa285df06ef646c48b9d8d61193d9bb66",
+          "name": " MACHINES  BOOTLEG",
+          "slug": "machines-bootleg"
+        }
+      ]
+    },
+    {
+      "address": "0x0c4f44ff438fa12020c385a3a622fe4c7676289d",
+      "alphaScore": 31.56,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": -0.1,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xd844510e2a8e0d9b7552bc3c0b89be5178773ead",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x82a88520a4db938b4a07e45050aaed7359cee4a7",
+      "alphaScore": 31.44,
+      "winRatePercent": 33.3,
+      "netTotalProfitUSD": 0.19,
+      "distinctDropsCount": 3,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0x28ebdcabf5fa9e024167bcab8b8ba7d0dfa9e9dd",
+          "name": "DOCTOR PFP",
+          "slug": "doctor-pfp"
+        },
+        {
+          "contract": "0xae328e90f8effa39f6fa4a995f74f2ea2153d784",
+          "name": "Coral Felons",
+          "slug": "coral-felons"
+        },
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0xc12e3657ce2ede7fae1d6f5a83b386f6a630fd18",
+      "alphaScore": 31.44,
+      "winRatePercent": 50,
+      "netTotalProfitUSD": -0.1,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 1,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa4517cc3a60d44056887e8b6a3d2f2334373f411",
+          "name": "8BIT",
+          "slug": "8bit-rh"
+        }
+      ]
+    },
+    {
+      "address": "0x454dc25c9dcc5090ffccd8678736ecd9e2555b35",
+      "alphaScore": 19.94,
+      "winRatePercent": 0,
+      "netTotalProfitUSD": -0.03,
+      "distinctDropsCount": 4,
+      "profitableDropsCount": 0,
+      "qualifyingDrops": [
+        {
+          "contract": "0x66309d7526814cd6dd9f7bd1099899c8c38a9e79",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xa0a43c0898f4535118120c7fb509d957889da3d7",
+          "name": "Numa Partner Pass NFT",
+          "slug": "numa-partner-pass-nft"
+        },
+        {
+          "contract": "0xc2ac5fd27dd8e547b81925012d964aea812a24be",
+          "name": "CURIOSITY",
+          "slug": "curiosity-967459376"
+        },
+        {
+          "contract": "0x53d40d1395f476e4df456a5e00528a4f7d588730",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x15f39af16a6cc9374f55d267a8c29f2d47914be4",
+      "alphaScore": 19.9,
+      "winRatePercent": 0,
+      "netTotalProfitUSD": -0.05,
+      "distinctDropsCount": 4,
+      "profitableDropsCount": 0,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe3cfad067a1bfde418dd1e43b858f626205d3d4c",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x33d91811857c1711ce0f3efb248553e4f1714357",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x44b3206fd9029b1ab39941b0cf9ef860abd5bce3",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xab32525bc1d5fd6587923a280cfadce33990b566",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0xac87b08d98dfccf5157b67dd5dd085151352a2c8",
+      "alphaScore": 17,
+      "winRatePercent": 0,
+      "netTotalProfitUSD": 0,
+      "distinctDropsCount": 3,
+      "profitableDropsCount": 0,
+      "qualifyingDrops": [
+        {
+          "contract": "0x44b3206fd9029b1ab39941b0cf9ef860abd5bce3",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x62054c05cd07ecbba70871d7fd7e2e61abd5427b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0xab32525bc1d5fd6587923a280cfadce33990b566",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x3bcec4a951741d1442827cbbf8c9a3ef1a5a5f3e",
+      "alphaScore": 12,
+      "winRatePercent": 0,
+      "netTotalProfitUSD": 0,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 0,
+      "qualifyingDrops": [
+        {
+          "contract": "0x28ebdcabf5fa9e024167bcab8b8ba7d0dfa9e9dd",
+          "name": "DOCTOR PFP",
+          "slug": "doctor-pfp"
+        },
+        {
+          "contract": "0xe4bc55cf1457bac61668e19e85a0f1f5ed272bb7",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x4efca7cc8058d5acd2bb2ccd2a9430906291cdd6",
+      "alphaScore": 12,
+      "winRatePercent": 0,
+      "netTotalProfitUSD": 0,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 0,
+      "qualifyingDrops": [
+        {
+          "contract": "0x28ebdcabf5fa9e024167bcab8b8ba7d0dfa9e9dd",
+          "name": "DOCTOR PFP",
+          "slug": "doctor-pfp"
+        },
+        {
+          "contract": "0x992b0dbc19c51ed4a03c4c4e9a79317022c873ca",
+          "name": "Quotrons Desktop",
+          "slug": "quotrons-desktop-922609617"
+        }
+      ]
+    },
+    {
+      "address": "0xbdf832b4e9e7685aa2821dc419d1034d5bbdcbc6",
+      "alphaScore": 12,
+      "winRatePercent": 0,
+      "netTotalProfitUSD": 0,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 0,
+      "qualifyingDrops": [
+        {
+          "contract": "0x33d91811857c1711ce0f3efb248553e4f1714357",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x879282f8aa4fb98962b09b0e22f18472ec91e0ba",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x5ec7304f8a24c9e1a7b626fffcee44763b9059b1",
+      "alphaScore": 12,
+      "winRatePercent": 0,
+      "netTotalProfitUSD": 0,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 0,
+      "qualifyingDrops": [
+        {
+          "contract": "0x879282f8aa4fb98962b09b0e22f18472ec91e0ba",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x7c8fdbdd79e1acd1e8a94087b93e53db0a328066",
+          "name": "The Computer Games",
+          "slug": "the-computer-games"
+        }
+      ]
+    },
+    {
+      "address": "0xf81166b29d83104d40a381b3b715a06038b8364d",
+      "alphaScore": 12,
+      "winRatePercent": 0,
+      "netTotalProfitUSD": 0,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 0,
+      "qualifyingDrops": [
+        {
+          "contract": "0x879282f8aa4fb98962b09b0e22f18472ec91e0ba",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x7c8fdbdd79e1acd1e8a94087b93e53db0a328066",
+          "name": "The Computer Games",
+          "slug": "the-computer-games"
+        }
+      ]
+    },
+    {
+      "address": "0x0726f4dd5a9abccb23075887bb6ee8bdadbfe876",
+      "alphaScore": 12,
+      "winRatePercent": 0,
+      "netTotalProfitUSD": 0,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 0,
+      "qualifyingDrops": [
+        {
+          "contract": "0x1df57a91ac47f3afe15c018676f81144392ad9ef",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x33d91811857c1711ce0f3efb248553e4f1714357",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x93721d340c48a77d247ac83d915e4719283ad0db",
+      "alphaScore": 10.44,
+      "winRatePercent": 0,
+      "netTotalProfitUSD": -0.16,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 0,
+      "qualifyingDrops": [
+        {
+          "contract": "0x992b0dbc19c51ed4a03c4c4e9a79317022c873ca",
+          "name": "Quotrons Desktop",
+          "slug": "quotrons-desktop-922609617"
+        },
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x5ce41ef591765d341c98f217354436279def0bb1",
+      "alphaScore": 10.44,
+      "winRatePercent": 0,
+      "netTotalProfitUSD": -0.16,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 0,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x28ebdcabf5fa9e024167bcab8b8ba7d0dfa9e9dd",
+          "name": "DOCTOR PFP",
+          "slug": "doctor-pfp"
+        }
+      ]
+    },
+    {
+      "address": "0x101be51fb7d46dff2bff97f3c503d97b58a5cd68",
+      "alphaScore": 9.96,
+      "winRatePercent": 0,
+      "netTotalProfitUSD": -0.4,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 0,
+      "qualifyingDrops": [
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x28ebdcabf5fa9e024167bcab8b8ba7d0dfa9e9dd",
+          "name": "DOCTOR PFP",
+          "slug": "doctor-pfp"
+        }
+      ]
+    },
+    {
+      "address": "0xc30970a840cae4c1f1b6780a9295f4b1f6d17d61",
+      "alphaScore": 9.96,
+      "winRatePercent": 0,
+      "netTotalProfitUSD": -0.4,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 0,
+      "qualifyingDrops": [
+        {
+          "contract": "0x992b0dbc19c51ed4a03c4c4e9a79317022c873ca",
+          "name": "Quotrons Desktop",
+          "slug": "quotrons-desktop-922609617"
+        },
+        {
+          "contract": "0xad2dcd58b3f0e753f0956ed882e9e3c2094c508f",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x16824a229b5de92fbaa84a9948e4b237358b4845",
+      "alphaScore": 9.38,
+      "winRatePercent": 0,
+      "netTotalProfitUSD": -0.31,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 0,
+      "qualifyingDrops": [
+        {
+          "contract": "0x7c8fdbdd79e1acd1e8a94087b93e53db0a328066",
+          "name": "The Computer Games",
+          "slug": "the-computer-games"
+        },
+        {
+          "contract": "0xbca27dafe70dcf4f028aeca9c194941745b74954",
+          "name": "Volt Nft",
+          "slug": "volt-nft-229029842"
+        }
+      ]
+    },
+    {
+      "address": "0x27caa2deae23afba9270e16410d87edab6a3d789",
+      "alphaScore": 9.26,
+      "winRatePercent": 0,
+      "netTotalProfitUSD": -0.6,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 0,
+      "qualifyingDrops": [
+        {
+          "contract": "0x38f02c213987fb73ee15a5c3d0d6ce5420d1fdf9",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x429a208e758e9c16f4a3e9ec098a1e139b47bc87",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x6bd1b88230d7f97667e06821e02d337ec51b5b91",
+      "alphaScore": 8.96,
+      "winRatePercent": 0,
+      "netTotalProfitUSD": -0.52,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 0,
+      "qualifyingDrops": [
+        {
+          "contract": "0xe811a782e46eb186a6764b3d91ad0516e65f7b4b",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x66cd01fce1f7690b02abe7c9bae7c91a04616bc1",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    },
+    {
+      "address": "0x523524c170bfb36dcc5398f0c79f7742cf24b6ab",
+      "alphaScore": 8.04,
+      "winRatePercent": 0,
+      "netTotalProfitUSD": -1.12,
+      "distinctDropsCount": 2,
+      "profitableDropsCount": 0,
+      "qualifyingDrops": [
+        {
+          "contract": "0x38f02c213987fb73ee15a5c3d0d6ce5420d1fdf9",
+          "name": "Unknown Collection",
+          "slug": ""
+        },
+        {
+          "contract": "0x429a208e758e9c16f4a3e9ec098a1e139b47bc87",
+          "name": "Unknown Collection",
+          "slug": ""
+        }
+      ]
+    }
+  ]
+}

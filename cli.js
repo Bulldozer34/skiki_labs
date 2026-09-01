@@ -7,6 +7,7 @@ const inquirer = require('inquirer');
 const { ethers } = require('ethers');
 const logger = require('./src/utils/logger');
 const { CHAINS, getChainChoices, expandAlchemyKey } = require('./src/utils/chains');
+const { buildEndpoints } = require('./src/utils/rpcPool');
 const { resolveCollection } = require('./src/utils/resolver');
 const WalletService = require('./src/services/walletService');
 const CollectionService = require('./src/services/collectionService');
@@ -17,6 +18,10 @@ const { runPublicMint } = require('./src/engines/publicMintEngine');
 const { runAllowlistMint } = require('./src/engines/allowlistMintEngine');
 const { checkAllWallets } = require('./src/engines/eligibilityChecker');
 const { getEthPriceUsd, convertUsdToEth, convertEthToUsd } = require('./src/utils/priceFetcher');
+const { resolveGasPreset } = require('./src/utils/gasPresets');
+const TrackerEngine = require('./src/engines/trackerEngine');
+const CopyMintEngine = require('./src/engines/copyMintEngine');
+const trackedWalletService = require('./src/services/trackedWalletService');
 
 async function main() {
   console.clear();
@@ -41,6 +46,10 @@ async function main() {
             value: 'PUBLIC'
           },
           {
+            name: '🐋 Copy-Mint Engine & Whale Tracker (Mempool & Block Automint)',
+            value: 'COPYMINT'
+          },
+          {
             name: '💰 Check Wallet Balances & Nonces',
             value: 'BALANCE'
           },
@@ -52,6 +61,9 @@ async function main() {
       }
     ]);
 
+    if (mintMode === 'COPYMINT') {
+      return await copyMintWizardMode();
+    }
     if (mintMode === 'BALANCE') {
       return await checkBalancesMode();
     }
@@ -244,7 +256,7 @@ async function main() {
     ]);
 
     // ---------------------------------------------------------
-    // STEP 7: Gas Configuration
+    // STEP 7: Gas Configuration (Auto-Optimized — Zero Friction)
     // ---------------------------------------------------------
     logger.separator();
     const isL2 = chainConfig.chainId !== 1; // Robinhood, Base, Arbitrum, Optimism, etc.
@@ -253,43 +265,13 @@ async function main() {
       const feeData = await provider.getFeeData();
       if (feeData.maxFeePerGas) {
         liveBaseFeeGwei = ethers.formatUnits(feeData.maxFeePerGas, 'gwei');
-        logger.info(`Live Network Max Fee: ~${parseFloat(liveBaseFeeGwei).toFixed(3)} Gwei`);
       }
     } catch (e) {}
 
-    const calculatedMaxFee = (parseFloat(liveBaseFeeGwei) * 1.5).toFixed(3);
-    const defaultMaxFee = isL2 
-      ? Math.max(0.2, Math.min(parseFloat(calculatedMaxFee) || 0.4, 1.0)).toString() 
-      : (process.env.DEFAULT_MAX_FEE_GWEI || '25.0');
-    const defaultPriorityFee = isL2 ? '0.1' : (process.env.DEFAULT_PRIORITY_FEE_GWEI || '1.5');
-    const defaultGasLimit = isL2 ? 200000 : (parseInt(process.env.DEFAULT_GAS_LIMIT) || 300000);
-
-    const gasAnswers = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'maxFeePerGas',
-        message: 'Max Fee Per Gas (in Gwei):',
-        default: defaultMaxFee
-      },
-      {
-        type: 'input',
-        name: 'maxPriorityFeePerGas',
-        message: 'Priority Tip (in Gwei):',
-        default: defaultPriorityFee
-      },
-      {
-        type: 'number',
-        name: 'gasLimit',
-        message: 'Gas Limit:',
-        default: defaultGasLimit
-      }
-    ]);
-
-    const gasSettings = {
-      maxFeePerGas: gasAnswers.maxFeePerGas.trim(),
-      maxPriorityFeePerGas: gasAnswers.maxPriorityFeePerGas.trim(),
-      gasLimit: gasAnswers.gasLimit
-    };
+    // Auto-resolve optimal gas profile for the target chain
+    const defaultPreset = isL2 ? 'turbo' : 'ultra';
+    const gasSettings = resolveGasPreset(defaultPreset, { isL2, liveBaseFeeGwei });
+    logger.speed(`⚡ Gas Profile: Auto-Optimized for ${chainConfig.name} (Max Fee: ${gasSettings.maxFeePerGas} Gwei | Priority Tip: ${gasSettings.maxPriorityFeePerGas} Gwei)`);
 
     // ---------------------------------------------------------
     // STEP 8: Timing & Scheduling
@@ -418,6 +400,14 @@ async function main() {
     // ---------------------------------------------------------
     // STEP 9: Summary & Confirmation
     // ---------------------------------------------------------
+
+    // Build the ordered endpoint pool before the summary so the operator can see
+    // which path writes will take. On a FIFO chain the ordering matters: the
+    // sequencer's write ingress goes first (it is the only node that can order a
+    // transaction — everything else forwards to it) and is tagged broadcast-only
+    // so nothing tries to read state through it.
+    const { endpoints, urls: rpcUrls, feedUrl } = buildEndpoints(chainConfig, rpcUrl);
+
     logger.separator();
     console.log(logger.summaryTable ? '' : '');
     logger.info('=== CONFIGURATION SUMMARY ===');
@@ -428,6 +418,12 @@ async function main() {
     console.log(`Quantity/Wallet:${quantity} (Total: ${wallets.length * quantity})`);
     console.log(`Recipient:      ${recipientAddress || 'None (Stay in minting wallets)'}`);
     console.log(`Max Fee:        ${gasSettings.maxFeePerGas} Gwei | Tip: ${gasSettings.maxPriorityFeePerGas} Gwei`);
+    console.log(`Write Path:     ${endpoints.map(e => e.label).join(' → ') || 'none'}`);
+    console.log(`Sequencer Feed: ${feedUrl || 'disabled (will poll blocks for drop time)'}`);
+    const leadTimeDisplay = (process.env.SNIPER_LEAD_TIME_MS || '').trim()
+      ? `${process.env.SNIPER_LEAD_TIME_MS}ms (pinned via SNIPER_LEAD_TIME_MS)`
+      : 'auto-calibrated from measured latency at T-5s';
+    console.log(`Sniper Lead:    ${leadTimeDisplay}`);
     const timeUntilStr = startTime ? ` (in ${logger.formatDuration(startTime - Math.floor(Date.now() / 1000))})` : '';
     console.log(`Start Time:     ${startTime ? new Date(startTime * 1000).toLocaleTimeString() + timeUntilStr : 'Immediate'}`);
     logger.separator();
@@ -446,22 +442,12 @@ async function main() {
       process.exit(0);
     }
 
-    // Build multi-RPC array for broadcast racing
-    const rpcUrls = [rpcUrl];
-    if (chainConfig.defaultRpc && chainConfig.defaultRpc !== rpcUrl) {
-      rpcUrls.push(chainConfig.defaultRpc);
-    }
-    if (process.env.ANKR_KEY && chainConfig.chainId === 1) {
-      rpcUrls.push(`https://rpc.ankr.com/eth/${process.env.ANKR_KEY.trim()}`);
-    }
-    if (chainConfig.chainId === 1 && !rpcUrls.includes('https://eth.llamarpc.com')) {
-      rpcUrls.push('https://eth.llamarpc.com');
-    }
-
     const runConfig = {
       wallets,
       provider,
+      endpoints,
       rpcUrls,
+      feedUrl,
       nftContractAddress,
       collectionSlug,
       chain: chainConfig,
@@ -1236,6 +1222,372 @@ async function checkBalancesMode() {
   }
 }
 
+/**
+ * ─────────────────────────────────────────────────────────────
+ * Copy-Mint Engine & Whale Tracker Interactive CLI Mode
+ * ─────────────────────────────────────────────────────────────
+ */
+async function copyMintWizardMode() {
+  console.clear();
+  logger.banner();
+  logger.info('🐋 Copy-Mint Engine & Whale Tracker Wizard\n');
+
+  const { copyAction } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'copyAction',
+      message: 'Select Copy-Mint Action:',
+      choices: [
+        {
+          name: '🚀 1. Start Live Whale Tracker & Automint (Mempool WS + Blocks)',
+          value: 'LIVE'
+        },
+        {
+          name: '📋 2. Manage Tracked Whale Wallets (Add / Remove / List)',
+          value: 'MANAGE'
+        },
+        {
+          name: '🔬 3. Test / Simulate Single Transaction Hash (Dry-Run)',
+          value: 'SIMULATE'
+        },
+        {
+          name: '🏆 4. Import Top Whales from Scout / Leaderboard',
+          value: 'SCOUT_IMPORT'
+        },
+        {
+          name: '◀️ Back to Main Menu',
+          value: 'BACK'
+        }
+      ]
+    }
+  ]);
+
+  if (copyAction === 'BACK') {
+    return await main();
+  }
+
+  if (copyAction === 'MANAGE') {
+    return await manageTrackedWalletsCli();
+  }
+
+  if (copyAction === 'SCOUT_IMPORT') {
+    return await importScoutWhalesCli();
+  }
+
+  if (copyAction === 'SIMULATE') {
+    return await simulateTxCli();
+  }
+
+  if (copyAction === 'LIVE') {
+    return await startLiveCopyMintCli();
+  }
+}
+
+async function manageTrackedWalletsCli() {
+  logger.separator();
+  const wallets = trackedWalletService.getWallets();
+
+  if (wallets.length === 0) {
+    logger.warn('No whale wallets currently tracked.');
+  } else {
+    logger.info(`📋 Currently Tracked Whale Wallets (${wallets.length}):`);
+    const Table = require('cli-table3');
+    const table = new Table({
+      head: ['#', 'Label', 'Address', 'Status'],
+      style: { head: ['cyan'] }
+    });
+
+    wallets.forEach((w, i) => {
+      table.push([
+        i + 1,
+        w.label || 'Whale',
+        w.address,
+        w.active !== false ? '\x1b[32mActive\x1b[0m' : '\x1b[31mPaused\x1b[0m'
+      ]);
+    });
+    console.log(table.toString());
+  }
+
+  const { manageOpt } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'manageOpt',
+      message: 'Management Options:',
+      choices: [
+        { name: '➕ Add Whale Wallet', value: 'ADD' },
+        { name: '🗑️ Remove Whale Wallet', value: 'REMOVE' },
+        { name: '⏸️ Toggle Active / Pause', value: 'TOGGLE' },
+        { name: '◀️ Back', value: 'BACK' }
+      ]
+    }
+  ]);
+
+  if (manageOpt === 'BACK') {
+    return await copyMintWizardMode();
+  }
+
+  if (manageOpt === 'ADD') {
+    const { newAddress, newLabel } = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'newAddress',
+        message: 'Enter Whale EVM Address (0x...):',
+        validate: input => (ethers.isAddress(input.trim()) ? true : 'Invalid EVM address')
+      },
+      {
+        type: 'input',
+        name: 'newLabel',
+        message: 'Enter friendly label (optional):',
+        default: 'Alpha Whale'
+      }
+    ]);
+
+    const added = trackedWalletService.addWallet(newAddress.trim(), newLabel.trim());
+    logger.success(`Added whale wallet: ${added.label} (${added.address})`);
+    return await manageTrackedWalletsCli();
+  }
+
+  if (manageOpt === 'REMOVE') {
+    if (wallets.length === 0) return await manageTrackedWalletsCli();
+    const { toRemove } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'toRemove',
+        message: 'Select wallet to remove:',
+        choices: wallets.map(w => ({ name: `${w.label} (${w.address})`, value: w.address }))
+      }
+    ]);
+
+    trackedWalletService.removeWallet(toRemove);
+    logger.success(`Removed wallet ${toRemove}`);
+    return await manageTrackedWalletsCli();
+  }
+
+  if (manageOpt === 'TOGGLE') {
+    if (wallets.length === 0) return await manageTrackedWalletsCli();
+    const { toToggle } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'toToggle',
+        message: 'Select wallet to toggle:',
+        choices: wallets.map(w => ({ name: `${w.label} - ${w.active !== false ? 'Active' : 'Paused'} (${w.address})`, value: w.address }))
+      }
+    ]);
+
+    const activeState = trackedWalletService.toggleActive(toToggle);
+    logger.success(`Wallet is now: ${activeState ? 'ACTIVE' : 'PAUSED'}`);
+    return await manageTrackedWalletsCli();
+  }
+}
+
+async function importScoutWhalesCli() {
+  logger.separator();
+  logger.info('🔍 Importing Top Whales from Scout / Leaderboard...');
+
+  const topWalletsFile = path.join(process.cwd(), 'topwqallie.txt');
+  let importedCount = 0;
+
+  if (fs.existsSync(topWalletsFile)) {
+    const lines = fs.readFileSync(topWalletsFile, 'utf-8').split('\n');
+    for (const line of lines) {
+      const match = line.match(/0x[a-fA-F0-9]{40}/);
+      if (match && ethers.isAddress(match[0])) {
+        trackedWalletService.addWallet(match[0], 'Robinhood Whale');
+        importedCount++;
+      }
+    }
+  }
+
+  if (importedCount === 0) {
+    // Default high alpha examples
+    const seedWhales = [
+      { address: '0x460d7DFa923C363d6b8F421D599Aee1648a73bEE', label: 'OEGP Alpha Whale' },
+      { address: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045', label: 'Vitalik.eth' }
+    ];
+    importedCount = trackedWalletService.importFromScout(seedWhales);
+  }
+
+  logger.success(`Imported ${importedCount} whale wallet(s) into tracker!`);
+  return await manageTrackedWalletsCli();
+}
+
+async function simulateTxCli() {
+  logger.separator();
+  logger.info('🔬 Test & Simulate Copy-Mint from Past Transaction');
+
+  const chainChoices = getChainChoices();
+  const { simChain } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'simChain',
+      message: 'Select Network:',
+      choices: chainChoices
+    }
+  ]);
+
+  const defaultChainRpc = simChain.alchemyPrefix && process.env.ALCHEMY_KEY
+    ? expandAlchemyKey(process.env.ALCHEMY_KEY, simChain)
+    : (simChain.defaultRpc || process.env.DEFAULT_RPC_URL);
+
+  const { rpcUrl, targetTxHash } = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'rpcUrl',
+      message: 'RPC Endpoint (Enter to use default):',
+      default: defaultChainRpc
+    },
+    {
+      type: 'input',
+      name: 'targetTxHash',
+      message: 'Enter Transaction Hash to Inspect & Simulate:',
+      validate: input => (/^0x[a-fA-F0-9]{64}$/.test(input.trim()) ? true : 'Invalid 64-char hex transaction hash')
+    }
+  ]);
+
+  const provider = connectionManager.createEthersProvider(rpcUrl.trim(), simChain.chainId);
+  const sampleWallet = ethers.Wallet.createRandom();
+
+  try {
+    const report = await CopyMintEngine.simulate({
+      txHash: targetTxHash.trim(),
+      provider,
+      sampleWallet,
+      quantity: 1
+    });
+
+    logger.separator();
+    logger.success('✅ Simulation Analysis Complete:');
+    console.log(`• Target Contract:  \x1b[36m${report.to}\x1b[0m`);
+    console.log(`• Original Sender:  \x1b[33m${report.from}\x1b[0m`);
+    console.log(`• Method Selector:  \x1b[32m${report.classification.selector}\x1b[0m (${report.classification.selectorName || 'Unknown'})`);
+    console.log(`• Confidence:       \x1b[35m${report.classification.confidence.toUpperCase()}\x1b[0m`);
+    console.log(`• Payment Mode:     \x1b[32m${report.paymentPlan.paymentMode.toUpperCase()}\x1b[0m (Cost: ${report.paymentPlan.selectedValueEth} ETH)`);
+    console.log(`• Execution Gate:   ${report.paymentPlan.shouldExecute ? '\x1b[32mPASSED (Safe to mint)\x1b[0m' : '\x1b[31mREJECTED\x1b[0m'}`);
+    console.log(`• Gate Reason:      ${report.paymentPlan.reason}`);
+    logger.separator();
+  } catch (err) {
+    logger.error(`Simulation failed: ${err.message}`);
+  }
+
+  const { nextAct } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'nextAct',
+      message: 'Next action:',
+      choices: [{ name: 'Simulate Another Tx', value: 'AGAIN' }, { name: 'Back to Menu', value: 'BACK' }]
+    }
+  ]);
+
+  if (nextAct === 'AGAIN') return await simulateTxCli();
+  return await copyMintWizardMode();
+}
+
+async function startLiveCopyMintCli() {
+  logger.separator();
+  logger.info('🚀 Live Whale Tracker & Automint Setup\n');
+
+  const trackedWallets = trackedWalletService.getWallets().filter(w => w.active !== false);
+  if (trackedWallets.length === 0) {
+    logger.warn('No active tracked whale wallets found!');
+    logger.info('Please add at least one whale wallet before starting live copy-mint.');
+    return await manageTrackedWalletsCli();
+  }
+
+  const chainChoices = getChainChoices();
+  const { selectedChain } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'selectedChain',
+      message: 'Select Chain to Monitor:',
+      choices: chainChoices
+    }
+  ]);
+
+  const defaultChainRpc = selectedChain.alchemyPrefix && process.env.ALCHEMY_KEY
+    ? expandAlchemyKey(process.env.ALCHEMY_KEY, selectedChain)
+    : (selectedChain.defaultRpc || process.env.DEFAULT_RPC_URL);
+
+  const { rpcInput, maxPriceEth, mintQty, gasPreset, recipientAddr } = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'rpcInput',
+      message: 'HTTP RPC Endpoint:',
+      default: defaultChainRpc
+    },
+    {
+      type: 'input',
+      name: 'maxPriceEth',
+      message: 'Maximum ETH price ceiling per wallet:',
+      default: '0.05',
+      validate: input => (!isNaN(parseFloat(input)) && parseFloat(input) >= 0 ? true : 'Invalid ETH amount')
+    },
+    {
+      type: 'number',
+      name: 'mintQty',
+      message: 'Quantity to mint per wallet:',
+      default: 1
+    },
+    {
+      type: 'list',
+      name: 'gasPreset',
+      message: 'Select Gas Preset:',
+      choices: ['RAPID', 'INSTANT', 'AGGRESSIVE', 'ULTRA', 'STANDARD']
+    },
+    {
+      type: 'input',
+      name: 'recipientAddr',
+      message: 'NFT Auto-Forward Cold Storage Recipient (optional, press enter to skip):',
+      default: process.env.RECIPIENT_ADDRESS || ''
+    }
+  ]);
+
+  const provider = connectionManager.createEthersProvider(rpcInput.trim(), selectedChain.chainId);
+  logger.separator();
+  const wallets = await WalletService.promptWalletKeys();
+
+  if (wallets.length === 0) {
+    logger.error('At least one burner wallet is required. Exiting.');
+    process.exit(1);
+  }
+
+  await WalletService.checkBalances(wallets, provider);
+
+  const tracker = new TrackerEngine({
+    httpProvider: provider,
+    wsRpcUrl: process.env.WS_RPC_URL || selectedChain.feedUrl,
+    chainId: selectedChain.chainId,
+    enablePending: process.env.ENABLE_PENDING_DETECTION !== 'false'
+  });
+
+  logger.separator();
+  logger.success(`🚀 Copy-Mint Engine ACTIVE! Listening for ${trackedWallets.length} whale wallet(s)...`);
+  logger.info('Press Ctrl+C at any time to stop.\n');
+
+  tracker.on('mint_detected', async (candidate) => {
+    logger.info(`\n⚡ [TRIGGER] Whale mint detected from ${candidate.label} (${candidate.sourceWallet})!`);
+    await CopyMintEngine.execute({
+      candidate,
+      wallets,
+      provider,
+      chainConfig: selectedChain,
+      options: {
+        quantity: mintQty,
+        maxMintEth: parseFloat(maxPriceEth),
+        gasMode: gasPreset,
+        recipientAddress: recipientAddr.trim() || null,
+        autoForward: Boolean(recipientAddr.trim())
+      }
+    }).catch(err => {
+      logger.error(`Execution error: ${err.message}`);
+    });
+  });
+
+  await tracker.start();
+
+  // Keep process alive
+  await new Promise(() => {});
+}
+
 // Route: --check, --generate, --balance, or default mint
 const args = process.argv.slice(2).map(a => a.toLowerCase());
 if (args.includes('--check') || args.includes('-c') || args.includes('check')) {
@@ -1244,7 +1596,10 @@ if (args.includes('--check') || args.includes('-c') || args.includes('check')) {
   generateWalletsMode();
 } else if (args.includes('--balance') || args.includes('-b') || args.includes('--bal') || args.includes('balance')) {
   checkBalancesMode();
+} else if (args.includes('--copymint') || args.includes('-cm') || args.includes('copymint')) {
+  copyMintWizardMode();
 } else {
   main();
 }
+
 

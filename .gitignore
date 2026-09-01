@@ -1,20 +1,24 @@
-# Environment & Secrets
+# Environment & Secrets (NEVER COMMIT)
 .env
 .env.*
 !.env.example
 wallets.env
 wallets.txt
 wallets_*.txt
+topwqallie.txt
+whales.txt
 *.key
 *.pem
 *.p12
 
-# Output & Logs
+# Output & State
 out.log
 out.err
 *.log
 npm-debug.log*
 mint-history.json
+sales-history.json
+risk-state.json
 
 # Dependencies & OS
 node_modules/
