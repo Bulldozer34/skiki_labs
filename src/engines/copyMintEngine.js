@@ -18,9 +18,30 @@ const { rewriteMintCalldataForWallet, rewriteMintCalldataQuantity } = require('.
 const PaymentDetector = require('./paymentDetector');
 const MultiRpcBroadcaster = require('./multiRpcBroadcaster');
 const { buildEndpoints } = require('../utils/rpcPool');
-const { estimateGasWithPreset } = require('../utils/gasEstimator');
+const { estimateGas } = require('../utils/gasEstimator');
 const { forwardNftsFromReceipt } = require('./nftForwarder');
+const copyMintPnL = require('../services/copyMintPnL');
+const { parseWalletNumbers } = require('../utils/walletSelector');
 const notifier = require('../utils/notifier');
+
+/**
+ * Map user-facing gas mode names to gasEstimator preset names.
+ * RAPID/INSTANT → turbo (75th percentile + 20% boost)
+ * AGGRESSIVE/ULTRA → ultra (75th percentile + 60% boost + 3x base)
+ * STANDARD → standard (25th percentile)
+ */
+const GAS_MODE_MAP = {
+  'RAPID': 'turbo',
+  'INSTANT': 'turbo',
+  'AGGRESSIVE': 'ultra',
+  'ULTRA': 'ultra',
+  'STANDARD': 'standard'
+};
+
+async function estimateGasWithPreset(provider, gasMode) {
+  const preset = GAS_MODE_MAP[(gasMode || 'RAPID').toUpperCase()] || 'turbo';
+  return await estimateGas(provider, preset);
+}
 
 class CopyMintEngine {
   /**
@@ -138,25 +159,43 @@ class CopyMintEngine {
       }
     } catch {}
 
-    // 7. Prepare and Pre-sign Transactions across All Wallets
-    const signedPlans = [];
+    // 7. Select Target Wallets (All for Free drops, Selected numbers for Paid drops)
+    let targetWalletIndices = Array.from({ length: wallets.length }, (_, i) => i);
+    if (paymentPlan.paymentMode === 'paid') {
+      const paidRule = options.paidWalletNumbers || process.env.PAID_WALLET_NUMBERS || 'all';
+      targetWalletIndices = parseWalletNumbers(paidRule, wallets.length);
+      logger.info(`[CopyMint] 💰 Paid drop detected (${paymentPlan.selectedValueEth} ETH). Executing on ${targetWalletIndices.length}/${wallets.length} designated wallets (${paidRule}).`);
+    } else {
+      logger.info(`[CopyMint] 🆓 Free drop detected ($0 ETH). Executing on ALL ${wallets.length} burner wallets!`);
+    }
+
+    if (targetWalletIndices.length === 0) {
+      logger.warn('[CopyMint] No wallets configured for paid drops. Skipping.');
+      return { success: false, executionId, reason: 'No paid wallets selected' };
+    }
+
+    // Prepare and Pre-sign Transactions across Selected Target Wallets (PARALLEL)
     const tPreflight = Date.now();
 
-    for (let i = 0; i < wallets.length; i++) {
-      const wallet = wallets[i];
-      const connectedWallet = wallet.connect(provider);
+    // Resolve chainId once upfront to avoid repeated async lookups
+    const resolvedChainId = chainConfig.chainId || (await provider.getNetwork()).chainId;
 
-      // Calldata rewritten for this specific wallet
-      let walletCalldata = rewriteMintCalldataForWallet(
-        candidate.calldata,
-        wallet.address,
-        candidate.sourceWallet
-      );
-      if (quantity > 1) {
-        walletCalldata = rewriteMintCalldataQuantity(walletCalldata, quantity) || walletCalldata;
-      }
+    // Parallel nonce fetch + calldata rewrite + signing across ALL target wallets simultaneously
+    const signingResults = await Promise.allSettled(
+      targetWalletIndices.map(async (i) => {
+        const wallet = wallets[i];
+        const connectedWallet = wallet.connect(provider);
 
-      try {
+        // Calldata rewritten for this specific wallet
+        let walletCalldata = rewriteMintCalldataForWallet(
+          candidate.calldata,
+          wallet.address,
+          candidate.sourceWallet
+        );
+        if (quantity > 1) {
+          walletCalldata = rewriteMintCalldataQuantity(walletCalldata, quantity) || walletCalldata;
+        }
+
         const nonce = await provider.getTransactionCount(wallet.address, 'pending');
         const txReq = {
           to: candidate.targetContract,
@@ -164,7 +203,7 @@ class CopyMintEngine {
           value: paymentPlan.selectedValue,
           nonce,
           gasLimit,
-          chainId: chainConfig.chainId || (await provider.getNetwork()).chainId
+          chainId: resolvedChainId
         };
 
         if (gasParams.maxFeePerGas) {
@@ -177,14 +216,22 @@ class CopyMintEngine {
         }
 
         const signedTx = await connectedWallet.signTransaction(txReq);
-        signedPlans.push({
+        return {
           index: i,
           walletAddress: wallet.address,
           signedTx,
           txReq
-        });
-      } catch (err) {
-        logger.warn(`[CopyMint] Failed to pre-sign for wallet #${i + 1} (${wallet.address.slice(0, 8)}...): ${err.message}`);
+        };
+      })
+    );
+
+    // Collect successful signing results, log failures
+    const signedPlans = [];
+    for (const result of signingResults) {
+      if (result.status === 'fulfilled') {
+        signedPlans.push(result.value);
+      } else {
+        logger.warn(`[CopyMint] Failed to pre-sign wallet: ${result.reason?.message || result.reason}`);
       }
     }
 
@@ -271,7 +318,7 @@ class CopyMintEngine {
       }, 1000);
     }
 
-    // 11. Send Multi-Channel Notifications (Discord & Telegram)
+    // 11. Send Multi-Channel Notifications (Discord & Telegram) & Record PnL
     const report = {
       executionId,
       targetContract: candidate.targetContract,
@@ -287,6 +334,21 @@ class CopyMintEngine {
       receipts,
       durationMs: totalDurationMs
     };
+
+    if (submittedCount > 0) {
+      copyMintPnL.recordCopyMint({
+        targetContract: candidate.targetContract,
+        collectionName: candidate.collectionName || `Collection (${(candidate.targetContract || '').slice(0, 8)}...)`,
+        collectionSlug: candidate.collectionSlug || candidate.targetContract,
+        collectionImage: candidate.collectionImage || 'https://opensea.io/static/images/logos/opensea-logo.png',
+        whaleWallet: candidate.sourceWallet,
+        whaleLabel: candidate.label || 'Whale Alpha',
+        mintPriceEth: paymentPlan.selectedValueEth,
+        totalNftsMinted: submittedCount * quantity,
+        walletCount: submittedCount,
+        txHashes: receipts.filter(r => r.status === 'submitted').map(r => r.txHash)
+      }).catch(err => logger.warn(`[CopyMint/PnL] Warning recording PnL: ${err.message}`));
+    }
 
     notifier.sendCopyMintAlert(report).catch(() => {});
 

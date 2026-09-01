@@ -128,13 +128,60 @@ class TrackerEngine extends EventEmitter {
       this.stats.wsConnected = true;
       logger.success(`[Tracker/WS] WebSocket connected. Subscribing to mempool pending txs...`);
 
-      this._pendingHandler = async (txHash) => {
-        if (!this.isRunning) return;
-        this.stats.pendingSeen++;
-        await this._processPendingTx(txHash).catch(() => {});
+      // Bounded concurrency pool for pending transaction lookups (max 6 parallel)
+      let activeLookups = 0;
+      const lookupQueue = [];
+
+      const drainQueue = async () => {
+        while (lookupQueue.length > 0 && activeLookups < 6) {
+          const hash = lookupQueue.shift();
+          activeLookups++;
+          this._processPendingTx(hash)
+            .catch(() => {})
+            .finally(() => {
+              activeLookups--;
+              if (lookupQueue.length > 0) drainQueue();
+            });
+        }
       };
 
-      this.wsProvider.on('pending', this._pendingHandler);
+      this._pendingHandler = (txOrHash) => {
+        if (!this.isRunning) return;
+        this.stats.pendingSeen++;
+
+        // If provider pushed full transaction object directly (e.g. Alchemy/filtered stream)
+        if (typeof txOrHash === 'object' && txOrHash !== null && txOrHash.from) {
+          this._handleTransactionObject(txOrHash, 'mempool');
+          return;
+        }
+
+        // Standard hash stream: push to rate-limited queue
+        if (typeof txOrHash === 'string') {
+          if (lookupQueue.length < 50) {
+            lookupQueue.push(txOrHash);
+            drainQueue();
+          }
+        }
+      };
+
+      // Check if Alchemy filtered subscription is available
+      const isAlchemy = this.wsRpcUrl.includes('alchemy.com');
+      const trackedAddresses = Array.from(trackedWalletService.getActiveAddressesSet());
+
+      if (isAlchemy && trackedAddresses.length > 0) {
+        try {
+          // Subscribe with server-side address filter (zero wasted getTransaction RPC calls!)
+          await this.wsProvider.send('eth_subscribe', [
+            'alchemy_pendingTransactions',
+            { fromAddress: trackedAddresses }
+          ]);
+          logger.success(`[Tracker/WS] Active Alchemy server-side filtered stream for ${trackedAddresses.length} whale wallet(s)!`);
+        } catch {
+          this.wsProvider.on('pending', this._pendingHandler);
+        }
+      } else {
+        this.wsProvider.on('pending', this._pendingHandler);
+      }
 
       // Listen for WebSocket disconnect
       if (this.wsProvider.websocket) {
@@ -167,61 +214,66 @@ class TrackerEngine extends EventEmitter {
     }, delay);
   }
 
+  _handleTransactionObject(tx, source = 'mempool', blockNumber = null) {
+    if (!tx || !tx.from || !tx.to) return;
+    const trackedSet = trackedWalletService.getActiveAddressesSet();
+    const fromLower = tx.from.toLowerCase();
+    if (!trackedSet.has(fromLower)) return;
+
+    const txHash = tx.hash;
+    if (dedupeStore.checkSourceTx(txHash)) {
+      this.stats.duplicatesSkipped++;
+      return;
+    }
+
+    const classification = classifyMintTransaction(
+      tx.data || tx.input,
+      tx.value ? tx.value.toString() : '0',
+      tx.to,
+      this.copyUnknownCalls
+    );
+
+    if (!classification.isMint) {
+      this.stats.nonMintsRejected++;
+      return;
+    }
+
+    dedupeStore.markSourceTx(txHash);
+    this.stats.mintsDetected++;
+    this.stats.lastDetectionTime = Date.now();
+
+    const candidate = {
+      sourceTxHash: txHash,
+      sourceWallet: tx.from,
+      label: trackedWalletService.getLabel(tx.from),
+      targetContract: tx.to,
+      calldata: tx.data || tx.input,
+      value: tx.value ? tx.value.toString() : '0',
+      gasPrice: tx.gasPrice ? tx.gasPrice.toString() : null,
+      maxFeePerGas: tx.maxFeePerGas ? tx.maxFeePerGas.toString() : null,
+      maxPriorityFeePerGas: tx.maxPriorityFeePerGas ? tx.maxPriorityFeePerGas.toString() : null,
+      gasLimit: tx.gasLimit ? tx.gasLimit.toString() : null,
+      detectionSource: source,
+      blockNumber,
+      detectedAt: Date.now(),
+      classification
+    };
+
+    logger.info(`[Tracker/${source === 'mempool' ? 'Pending' : 'Block'}] 🚀 Whale mint detected from ${candidate.label} (${candidate.sourceWallet.slice(0, 8)}...) -> ${candidate.targetContract.slice(0, 8)}...`);
+    this.emit('mint_detected', candidate);
+  }
+
   async _processPendingTx(txHash) {
     const trackedSet = trackedWalletService.getActiveAddressesSet();
     if (trackedSet.size === 0) return;
 
     try {
       const tx = await this.httpProvider.getTransaction(txHash);
-      if (!tx || !tx.from || !tx.to) return;
-
-      // Check if sender is tracked
-      const fromLower = tx.from.toLowerCase();
-      if (!trackedSet.has(fromLower)) return;
-
-      // Check classification
-      const classification = classifyMintTransaction(
-        tx.data,
-        tx.value ? tx.value.toString() : '0',
-        tx.to,
-        this.copyUnknownCalls
-      );
-
-      if (!classification.isMint) {
-        this.stats.nonMintsRejected++;
-        return;
+      if (tx) {
+        this._handleTransactionObject(tx, 'mempool');
       }
-
-      // Check dedupe
-      if (dedupeStore.checkSourceTx(txHash)) {
-        this.stats.duplicatesSkipped++;
-        return;
-      }
-      dedupeStore.markSourceTx(txHash);
-
-      this.stats.mintsDetected++;
-      this.stats.lastDetectionTime = Date.now();
-
-      const candidate = {
-        sourceTxHash: tx.hash,
-        sourceWallet: tx.from,
-        label: trackedWalletService.getLabel(tx.from),
-        targetContract: tx.to,
-        calldata: tx.data,
-        value: tx.value ? tx.value.toString() : '0',
-        gasPrice: tx.gasPrice ? tx.gasPrice.toString() : null,
-        maxFeePerGas: tx.maxFeePerGas ? tx.maxFeePerGas.toString() : null,
-        maxPriorityFeePerGas: tx.maxPriorityFeePerGas ? tx.maxPriorityFeePerGas.toString() : null,
-        gasLimit: tx.gasLimit ? tx.gasLimit.toString() : null,
-        detectionSource: 'mempool',
-        detectedAt: Date.now(),
-        classification
-      };
-
-      logger.info(`[Tracker/Pending] 🚀 Whale mint detected from ${candidate.label} (${candidate.sourceWallet.slice(0, 8)}...) -> ${candidate.targetContract.slice(0, 8)}...`);
-      this.emit('mint_detected', candidate);
     } catch {
-      // Pending tx may drop out of mempool before retrieval, ignore safely
+      // Pending tx dropped, safely ignore
     }
   }
 

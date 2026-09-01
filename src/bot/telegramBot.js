@@ -8,6 +8,19 @@ const { handleFund } = require('./commands/fund');
 const { handleDrops, handleDropCancel } = require('./commands/drops');
 const { handleSnipe, handleSnipeCallback, handlePendingInput } = require('./commands/snipe');
 const { handleSweep, handleSweepCallback, executeSweep, handleSweepPendingInput, activeSweepWizards } = require('./commands/sweep');
+const { handleTrack, handleUntrack, handleTracked, handleTrackCallback } = require('./commands/track');
+const {
+  handleCopyMintMenu,
+  handleCopyMintCallback,
+  handleCopyMintPnL,
+  handlePaidWalletsMenu,
+  handleSetPaidWallets,
+  handleSetMaxPrice,
+  handleSetQuantity,
+  handleSetGasMode,
+  handleSetRecipient
+} = require('./commands/copymint');
+const trackedWalletService = require('../services/trackedWalletService');
 const logger = require('../utils/logger');
 
 class TelegramBot {
@@ -25,10 +38,12 @@ class TelegramBot {
     this.offset = 0;
   }
 
-  // ─── Main Menu: Two Category Toolkits ─────────────────────────
+  // ─── Main Menu: Three Category Toolkits ─────────────────────────
   async sendMainMenu(chatId, messageId = null) {
     const totalWallets = this.state.wallets ? this.state.wallets.length : 0;
     const activeDrops = this.state.activeSnipes ? this.state.activeSnipes.size : 0;
+    const activeTracked = trackedWalletService.getActiveAddressesSet().size;
+    const automintStatus = this.state.automintEnabled !== false ? '🟢 Active' : '🔴 Paused';
 
     const text = [
       `⚡ <b>NFT Mint Bot — Remote Control Dashboard</b>`,
@@ -36,6 +51,7 @@ class TelegramBot {
       `🟢 <b>Daemon Status:</b> Active & Running 24/7`,
       `💼 <b>Active Wallets:</b> <code>${totalWallets}</code> loaded`,
       `🎯 <b>Active Background Snipes:</b> <code>${activeDrops}</code> scheduled`,
+      `🐋 <b>Whale Copy-Mint:</b> ${automintStatus} (<code>${activeTracked}</code> tracked)`,
       `━━━━━━━━━━━━━━━━━━━━`,
       `<i>Tap a toolkit category below to explore commands:</i>`
     ].join('\n');
@@ -43,11 +59,13 @@ class TelegramBot {
     const reply_markup = {
       inline_keyboard: [
         [{ text: '🎯 NFT SNIPER TOOLS', callback_data: 'menu_sniper' }],
+        [{ text: '⚡ COPY-MINT & WHALE TRACKER', callback_data: 'menu_copymint' }],
         [{ text: '💼 WALLET MANAGEMENT', callback_data: 'menu_wallet' }]
       ]
     };
 
     if (messageId) {
+
       await this.client.editMessageText(chatId, messageId, text, { parse_mode: 'HTML', reply_markup }).catch(() => {});
     } else {
       await this.client.sendMessage(chatId, text, { parse_mode: 'HTML', reply_markup }).catch(() => {});
@@ -188,6 +206,9 @@ class TelegramBot {
         case '/pnl':
           await handleStats(ctx);
           break;
+        case '/copypnl':
+          await handleCopyMintPnL(this.client, msg.chat.id);
+          break;
         case '/export':
           await handleExport(ctx);
           break;
@@ -209,6 +230,34 @@ class TelegramBot {
           break;
         case '/wallets':
           await handleWallets(ctx);
+          break;
+        case '/copymint':
+          await handleCopyMintMenu(this.client, msg.chat.id, null, this.state);
+          break;
+        case '/track':
+          await handleTrack(this.client, msg.chat.id, text);
+          break;
+        case '/untrack':
+          await handleUntrack(this.client, msg.chat.id, text);
+          break;
+        case '/tracked':
+          await handleTracked(this.client, msg.chat.id);
+          break;
+        case '/maxprice':
+          await handleSetMaxPrice(this.client, msg.chat.id, text, this.state);
+          break;
+        case '/quantity':
+        case '/qty':
+          await handleSetQuantity(this.client, msg.chat.id, text, this.state);
+          break;
+        case '/gasmode':
+          await handleSetGasMode(this.client, msg.chat.id, text, this.state);
+          break;
+        case '/paidwallets':
+          await handleSetPaidWallets(this.client, msg.chat.id, text, this.state);
+          break;
+        case '/setrecipient':
+          await handleSetRecipient(this.client, msg.chat.id, text, this.state);
           break;
         default:
           if (command.startsWith('/')) {
@@ -241,6 +290,10 @@ class TelegramBot {
         await this.client.answerCallbackQuery(cb.id);
         return await this.sendSniperMenu(cb.message.chat.id, cb.message.message_id);
       }
+      if (data === 'menu_copymint') {
+        await this.client.answerCallbackQuery(cb.id);
+        return await handleCopyMintMenu(this.client, cb.message.chat.id, cb.message.message_id, this.state);
+      }
       if (data === 'menu_wallet') {
         await this.client.answerCallbackQuery(cb.id);
         return await this.sendWalletMenu(cb.message.chat.id, cb.message.message_id);
@@ -248,6 +301,20 @@ class TelegramBot {
       if (data === 'menu_back') {
         await this.client.answerCallbackQuery(cb.id);
         return await this.sendMainMenu(cb.message.chat.id, cb.message.message_id);
+      }
+
+      // ─── Copy-Mint & Whale Tracker Callbacks ─────────────────
+      if (data.startsWith('cm_')) {
+        await this.client.answerCallbackQuery(cb.id);
+        return await handleCopyMintCallback(this.client, cb.message.chat.id, cb.message.message_id, data, this.state);
+      }
+      if (data.startsWith('tw_')) {
+        await this.client.answerCallbackQuery(cb.id);
+        return await handleTrackCallback(this.client, cb.message.chat.id, cb.message.message_id, data);
+      }
+      if (data === 'cmd_tracked') {
+        await this.client.answerCallbackQuery(cb.id);
+        return await handleTracked(this.client, cb.message.chat.id, cb.message.message_id);
       }
 
       // ─── Snipe Wizard Callbacks ─────────────────────────────
@@ -337,6 +404,15 @@ class TelegramBot {
     // ─── Register slash command menu with Telegram ────────────
     const commandList = [
       { command: 'start', description: '🏠 Remote Control Dashboard' },
+      { command: 'copymint', description: '⚡ Copy-Mint & Whale Tracker controls' },
+      { command: 'copypnl', description: '📊 Copy-Mint PnL Card & Whale Rankings' },
+      { command: 'track', description: '🐋 Track a new whale wallet' },
+      { command: 'tracked', description: '📋 List & manage tracked whales' },
+      { command: 'maxprice', description: '💰 Set max ETH price cap per token' },
+      { command: 'paidwallets', description: '💼 Specify wallet numbers for paid drops (e.g. 1-5)' },
+      { command: 'quantity', description: '🔢 Set mint quantity per wallet' },
+      { command: 'gasmode', description: '⛽ Set gas speed preset' },
+      { command: 'setrecipient', description: '📬 Set cold storage forwarding target' },
       { command: 'snipe', description: '🎯 Arm new NFT drop with wizard' },
       { command: 'sweep', description: '📦 Sweep NFTs & drain ETH to main' },
       { command: 'balance', description: '💰 Live wallet balances & nonces' },

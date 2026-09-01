@@ -18,6 +18,7 @@ const TelegramBot = require('./src/bot/telegramBot');
 const TrackerEngine = require('./src/engines/trackerEngine');
 const CopyMintEngine = require('./src/engines/copyMintEngine');
 const trackedWalletService = require('./src/services/trackedWalletService');
+const connectionManager = require('./src/services/connectionManager');
 
 async function startDaemon() {
   console.clear();
@@ -40,10 +41,10 @@ async function startDaemon() {
     process.exit(1);
   }
 
-  // 1. Initialize Default Blockchain Provider (Robinhood Mainnet)
+  // 1. Initialize Default Blockchain Provider (Robinhood Mainnet) with persistent keep-alive & DNS cache
   const defaultChain = CHAINS.ROBINHOOD;
   const primaryRpc = defaultChain.defaultRpc || 'https://rpc.mainnet.chain.robinhood.com';
-  const provider = new ethers.JsonRpcProvider(primaryRpc);
+  const provider = connectionManager.createEthersProvider(primaryRpc, defaultChain.chainId);
   logger.info(`Connected Provider: ${defaultChain.name} (${defaultChain.chainId})`);
 
   // 2. Load Local Session Wallets

@@ -10,7 +10,7 @@
     "start": "node cli.js",
     "dev": "node cli.js",
     "daemon": "node daemon.js",
-    "test": "node tests/test_copymint.js"
+    "test": "node tests/run_all.js"
   },
   "keywords": [
     "nft",

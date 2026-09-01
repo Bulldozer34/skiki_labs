@@ -209,35 +209,86 @@ const WalletService = {
   },
 
   /**
-   * Check ETH balances for all wallets concurrently
+   * Check ETH balances for all wallets using Multicall3 batch query (1 single RPC call)
+   * Falls back gracefully to concurrent individual getBalance calls if Multicall3 is unavailable.
    * @param {ethers.Wallet[]} wallets 
    * @param {ethers.Provider} provider 
    * @returns {Promise<Array<{address: string, balance: string, balanceWei: bigint}>>}
    */
   async checkBalances(wallets, provider) {
+    if (!wallets || wallets.length === 0) return [];
     logger.info(`Checking balances for ${wallets.length} wallet(s)...`);
-    const balancePromises = wallets.map(async (w) => {
-      try {
-        const balanceWei = await provider.getBalance(w.address);
+
+    // 1. Try Multicall3 batch query first (1 single RPC round-trip for 10-100 wallets)
+    const MULTICALL3_ADDRESS = '0xca11bde05977b3631167028862be2a173976ca11';
+    const multicallInterface = new ethers.Interface([
+      'function getEthBalance(address addr) view returns (uint256 balance)',
+      'function aggregate3((address target, bool allowFailure, bytes callData)[] calls) view returns ((bool success, bytes returnData)[])'
+    ]);
+
+    try {
+      const calls = wallets.map(w => ({
+        target: MULTICALL3_ADDRESS,
+        allowFailure: true,
+        callData: multicallInterface.encodeFunctionData('getEthBalance', [w.address])
+      }));
+
+      const rawCalldata = multicallInterface.encodeFunctionData('aggregate3', [calls]);
+      const returnData = await provider.call({
+        to: MULTICALL3_ADDRESS,
+        data: rawCalldata
+      });
+
+      const [results] = multicallInterface.decodeFunctionResult('aggregate3', returnData);
+
+      const balances = [];
+      for (let i = 0; i < wallets.length; i++) {
+        const w = wallets[i];
+        const res = results[i];
+        let balanceWei = 0n;
+
+        if (res && res.success && res.returnData && res.returnData !== '0x') {
+          const [bal] = multicallInterface.decodeFunctionResult('getEthBalance', res.returnData);
+          balanceWei = BigInt(bal);
+        }
+
         const formatted = ethers.formatEther(balanceWei);
         const shortAddr = `${w.address.slice(0, 6)}...${w.address.slice(-4)}`;
         logger.info(`  ${shortAddr}: ${formatted} ETH`);
-        return {
+        balances.push({
           address: w.address,
           balance: formatted,
           balanceWei
-        };
-      } catch (error) {
-        logger.error(`Error checking balance for ${w.address}: ${error.message}`);
-        return {
-          address: w.address,
-          balance: '0.0',
-          balanceWei: 0n
-        };
+        });
       }
-    });
 
-    return await Promise.all(balancePromises);
+      logger.success(`[Multicall3] Batched balance check completed in 1 RPC round-trip for ${wallets.length} wallet(s).`);
+      return balances;
+    } catch (multicallErr) {
+      // 2. Fallback to concurrent individual queries if Multicall3 is not available on this chain
+      const balancePromises = wallets.map(async (w) => {
+        try {
+          const balanceWei = await provider.getBalance(w.address);
+          const formatted = ethers.formatEther(balanceWei);
+          const shortAddr = `${w.address.slice(0, 6)}...${w.address.slice(-4)}`;
+          logger.info(`  ${shortAddr}: ${formatted} ETH`);
+          return {
+            address: w.address,
+            balance: formatted,
+            balanceWei
+          };
+        } catch (error) {
+          logger.error(`Error checking balance for ${w.address}: ${error.message}`);
+          return {
+            address: w.address,
+            balance: '0.0',
+            balanceWei: 0n
+          };
+        }
+      });
+
+      return await Promise.all(balancePromises);
+    }
   },
 
   /**

@@ -22,6 +22,8 @@ const { resolveGasPreset } = require('./src/utils/gasPresets');
 const TrackerEngine = require('./src/engines/trackerEngine');
 const CopyMintEngine = require('./src/engines/copyMintEngine');
 const trackedWalletService = require('./src/services/trackedWalletService');
+const copyMintPnL = require('./src/services/copyMintPnL');
+const PnLCardGenerator = require('./src/utils/pnlCardGenerator');
 
 async function main() {
   console.clear();
@@ -1255,6 +1257,10 @@ async function copyMintWizardMode() {
           value: 'SCOUT_IMPORT'
         },
         {
+          name: '📊 5. View Copy-Mint PnL & Collection Rankings',
+          value: 'PNL'
+        },
+        {
           name: '◀️ Back to Main Menu',
           value: 'BACK'
         }
@@ -1264,6 +1270,10 @@ async function copyMintWizardMode() {
 
   if (copyAction === 'BACK') {
     return await main();
+  }
+
+  if (copyAction === 'PNL') {
+    return await viewCopyMintPnLCli();
   }
 
   if (copyAction === 'MANAGE') {
@@ -1281,6 +1291,63 @@ async function copyMintWizardMode() {
   if (copyAction === 'LIVE') {
     return await startLiveCopyMintCli();
   }
+}
+
+async function viewCopyMintPnLCli() {
+  logger.separator();
+  const summary = await copyMintPnL.getSummary();
+  const savedSvg = PnLCardGenerator.saveSvgCardToFile(summary);
+
+  const Table = require('cli-table3');
+
+  console.log('\n📊 \x1b[1m\x1b[36mCOPY-MINT PnL & PERFORMANCE REPORT\x1b[0m');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+  const isProfitable = summary.netProfitUsd >= 0;
+  const pColor = isProfitable ? '\x1b[32m' : '\x1b[31m';
+  const sign = isProfitable ? '+' : '';
+
+  console.log(`💰 \x1b[1mNet Profit:\x1b[0m           ${pColor}${sign}$${summary.netProfitUsd.toFixed(2)} (${sign}${summary.roiPct}% ROI)\x1b[0m`);
+  console.log(`📈 \x1b[1mNet ETH:\x1b[0m              ${pColor}${sign}${summary.netProfitEth} ETH\x1b[0m`);
+  console.log(`📦 \x1b[1mTotal Minted:\x1b[0m         ${summary.totalMinted} NFTs across ${summary.totalDrops} drops`);
+  console.log(`🏷️  \x1b[1mTotal Spent:\x1b[0m          $${summary.totalCostUsd.toFixed(2)} (${summary.totalCostEth} ETH incl. gas)`);
+  console.log(`💸 \x1b[1mRealized Sales:\x1b[0m       ${summary.totalSold} sold ($${summary.totalRevenueUsd.toFixed(2)})`);
+  console.log(`💼 \x1b[1mUnsold Holdings:\x1b[0m      ${summary.holdingCount} held (Est Floor: $${summary.unrealizedFloorUsd.toFixed(2)})`);
+  console.log(`🖼️  \x1b[1mHD Card Generated:\x1b[0m    \x1b[33m${savedSvg}\x1b[0m`);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+  if (summary.topCollections && summary.topCollections.length > 0) {
+    console.log('🏆 \x1b[1mTop Minted Collections Breakdown:\x1b[0m');
+    const table = new Table({
+      head: ['Collection', 'Whale Alpha', 'Minted', 'Sold', 'Held', 'Net Profit ($)', 'ROI'],
+      style: { head: ['cyan'] }
+    });
+
+    summary.topCollections.forEach(c => {
+      const cProfitable = c.netProfitUsd >= 0;
+      const cColor = cProfitable ? '\x1b[32m' : '\x1b[31m';
+      table.push([
+        c.collectionName.slice(0, 20),
+        c.whaleLabel.slice(0, 15),
+        c.totalMinted,
+        c.soldCount,
+        c.holdingCount,
+        `${cColor}${cProfitable ? '+' : ''}$${c.netProfitUsd.toFixed(2)}\x1b[0m`,
+        `${cColor}${cProfitable ? '+' : ''}${c.roiPct}%\x1b[0m`
+      ]);
+    });
+    console.log(table.toString());
+  }
+
+  await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'cont',
+      message: 'Press Enter to return to Copy-Mint menu...'
+    }
+  ]);
+
+  return await copyMintWizardMode();
 }
 
 async function manageTrackedWalletsCli() {
@@ -1507,7 +1574,7 @@ async function startLiveCopyMintCli() {
     ? expandAlchemyKey(process.env.ALCHEMY_KEY, selectedChain)
     : (selectedChain.defaultRpc || process.env.DEFAULT_RPC_URL);
 
-  const { rpcInput, maxPriceEth, mintQty, gasPreset, recipientAddr } = await inquirer.prompt([
+  const { rpcInput, maxPriceEth, paidWalletsInput, mintQty, gasPreset, recipientAddr } = await inquirer.prompt([
     {
       type: 'input',
       name: 'rpcInput',
@@ -1517,9 +1584,15 @@ async function startLiveCopyMintCli() {
     {
       type: 'input',
       name: 'maxPriceEth',
-      message: 'Maximum ETH price ceiling per wallet:',
+      message: 'Maximum ETH price ceiling per token:',
       default: '0.05',
       validate: input => (!isNaN(parseFloat(input)) && parseFloat(input) >= 0 ? true : 'Invalid ETH amount')
+    },
+    {
+      type: 'input',
+      name: 'paidWalletsInput',
+      message: 'Wallet numbers for PAID drops (e.g. 1, 3, 7 or 1-5, or enter for All):',
+      default: process.env.PAID_WALLET_NUMBERS || '1-5'
     },
     {
       type: 'number',
@@ -1561,6 +1634,7 @@ async function startLiveCopyMintCli() {
 
   logger.separator();
   logger.success(`🚀 Copy-Mint Engine ACTIVE! Listening for ${trackedWallets.length} whale wallet(s)...`);
+  logger.info(`💼 Paid drop wallets: ${paidWalletsInput} | Free drop wallets: ALL (${wallets.length})`);
   logger.info('Press Ctrl+C at any time to stop.\n');
 
   tracker.on('mint_detected', async (candidate) => {
@@ -1573,6 +1647,7 @@ async function startLiveCopyMintCli() {
       options: {
         quantity: mintQty,
         maxMintEth: parseFloat(maxPriceEth),
+        paidWalletNumbers: paidWalletsInput,
         gasMode: gasPreset,
         recipientAddress: recipientAddr.trim() || null,
         autoForward: Boolean(recipientAddr.trim())

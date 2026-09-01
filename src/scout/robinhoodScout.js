@@ -7,6 +7,7 @@ const ethers = require('ethers');
 const axios = require('axios');
 const ScamFilter = require('./scamFilter');
 const ProfitCalculator = require('./profitCalculator');
+const connectionManager = require('../services/connectionManager');
 
 const SEADROP_ADDRESS = '0x00005EA00Ac477B1030CE78506496e8C2dE24bf5';
 const SEAPORT_ADDRESS = '0x0000000000000068F116a894984e2DB1123eB395';
@@ -22,7 +23,7 @@ const SEAPORT_ABI = [
 class RobinhoodScout {
   constructor(options = {}) {
     this.rpcUrl = options.rpcUrl || 'https://rpc.mainnet.chain.robinhood.com';
-    this.provider = new ethers.JsonRpcProvider(this.rpcUrl);
+    this.provider = connectionManager.createEthersProvider(this.rpcUrl, 4663);
     this.apiKey = options.apiKey || process.env.OPENSEA_API_KEY || '';
     this.maxMintCostUSD = options.maxMintCostUSD || 0.50;
     this.minDistinctDrops = options.minDistinctDrops || 2;
