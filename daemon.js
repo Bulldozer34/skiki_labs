@@ -64,6 +64,16 @@ async function startDaemon() {
     if (targetFile) {
       loadedWallets = WalletService.loadFromFile(targetFile);
       logger.success(`Loaded ${loadedWallets.length} session wallet(s) from ${targetFile}`);
+    } else if (process.env.SESSION_WALLETS || process.env.WALLETS) {
+      const raw = process.env.SESSION_WALLETS || process.env.WALLETS;
+      const keys = raw.split(/[\s,;]+/).map(k => k.trim()).filter(Boolean);
+      for (const pk of keys) {
+        try {
+          const w = new ethers.Wallet(pk, provider);
+          loadedWallets.push(w);
+        } catch (e) {}
+      }
+      logger.success(`Loaded ${loadedWallets.length} session wallet(s) from cloud environment variable`);
     } else {
       logger.warn('No existing wallet file found on startup. You can generate them via Telegram with /generate');
     }
@@ -133,9 +143,37 @@ async function startDaemon() {
     state: daemonState
   });
 
-  // 7. Handle Graceful Shutdown
+  // 7. Start Cloud Keep-Alive & Health Check HTTP Server (Zero Card Hosting)
+  const http = require('http');
+  const port = process.env.PORT || 3000;
+  const server = http.createServer((req, res) => {
+    if (req.url === '/health' || req.url === '/') {
+      const uptimeSec = Math.floor((Date.now() - daemonState.startTimeMs) / 1000);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        status: 'online',
+        service: 'Robinhood NFT Sniper Daemon',
+        uptimeSeconds: uptimeSec,
+        network: defaultChain.name,
+        walletsLoaded: daemonState.wallets ? daemonState.wallets.length : 0,
+        activeDropsArmed: daemonState.activeSnipes ? daemonState.activeSnipes.size : 0,
+        quickNodeVIP: !!process.env.QUICKNODE_URL,
+        timestamp: new Date().toISOString()
+      }, null, 2));
+    } else {
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('Not Found');
+    }
+  });
+
+  server.listen(port, () => {
+    logger.speed(`🌐 Cloud Web Health Server active on port ${port} (Ready for 24/7 keep-alive ping)`);
+  });
+
+  // 8. Handle Graceful Shutdown
   const shutdown = () => {
     logger.info('Received shutdown signal. Stopping daemon...');
+    try { server.close(); } catch (e) {}
     trackerEngine.stop();
     bot.stop();
     process.exit(0);
@@ -144,7 +182,7 @@ async function startDaemon() {
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
 
-  // 8. Launch Polling Loop
+  // 9. Launch Polling Loop
   await bot.start();
 }
 
