@@ -166,12 +166,24 @@ function getChainKey(chain) {
   return 'ETHEREUM';
 }
 
+/**
+ * Check if a chain is an L2 (Rollup / Orbit)
+ * @param {object|string|number} chain 
+ * @returns {boolean}
+ */
+function isLayer2Chain(chain) {
+  if (!chain) return false;
+  const key = getChainKey(chain);
+  return ['ROBINHOOD', 'ROBINHOOD_TESTNET', 'BASE', 'ARBITRUM', 'OPTIMISM'].includes(key);
+}
+
 module.exports = {
   CHAINS,
   getChainByName,
   getChainById,
   getChainKey,
   expandAlchemyKey,
-  getChainChoices
+  getChainChoices,
+  isLayer2Chain
 };
 

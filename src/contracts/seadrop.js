@@ -8,7 +8,8 @@ const SEADROP_ABI = [
   'function getPublicDrop(address nftContract) external view returns (tuple(uint256 mintPrice, uint256 startTime, uint256 endTime, uint256 maxTotalMintableByWallet, uint256 feeBps, bool restrictFeeRecipients))',
   'function getCreatorPayoutAddress(address nftContract) external view returns (address)',
   'function getAllowedFeeRecipients(address nftContract) external view returns (address[])',
-  'function getAllowListMerkleRoot(address nftContract) external view returns (bytes32)'
+  'function getAllowListMerkleRoot(address nftContract) external view returns (bytes32)',
+  'function getAllowListDrop(address nftContract) external view returns (tuple(uint256 mintPrice, uint256 maxTotalMintableByWallet, uint256 startTime, uint256 endTime, uint256 dropStageIndex, uint256 maxTokenSupplyForStage, uint256 feeBps, bool restrictFeeRecipients))'
 ];
 
 /**
@@ -98,10 +99,17 @@ function resolveMintFeeRecipient({ creatorPayoutAddress, allowedFeeRecipients, r
     throw new Error('SeaDrop public mint restricts fee recipients, but no allowed fee recipient was found on-chain.');
   }
 
+  const canonicalFeeRecipient = '0x0000a26b00c1F0DF003000390027140000fAa719';
+  const resolvedRecipient = creator !== ZeroAddress 
+    ? creator 
+    : (allowed[0] || canonicalFeeRecipient);
+
   return {
-    feeRecipient: creator !== ZeroAddress ? creator : (allowed[0] || ZeroAddress),
+    feeRecipient: resolvedRecipient,
     allowedFeeRecipients: allowed,
-    source: creator !== ZeroAddress ? 'creator_payout' : (allowed[0] ? 'first_allowed_fee_recipient' : 'zero_address')
+    source: creator !== ZeroAddress 
+      ? 'creator_payout' 
+      : (allowed[0] ? 'first_allowed_fee_recipient' : 'canonical_fallback')
   };
 }
 
@@ -123,10 +131,37 @@ function encodeMintPublicCalldata(nftContract, feeRecipient, minter, quantity) {
   ]);
 }
 
+/**
+ * Read allowlist drop parameters directly from SeaDrop contract on-chain
+ * @param {ethers.Provider} provider 
+ * @param {string} seadropAddress 
+ * @param {string} nftContractAddress 
+ * @returns {Promise<{mintPrice: bigint, maxTotalMintableByWallet: bigint, startTime: bigint, endTime: bigint, dropStageIndex: bigint, maxTokenSupplyForStage: bigint, feeBps: bigint, restrictFeeRecipients: boolean}|null>}
+ */
+async function getAllowListDropParams(provider, seadropAddress, nftContractAddress) {
+  try {
+    const seadropContract = new Contract(seadropAddress, SEADROP_ABI, provider);
+    const drop = await seadropContract.getAllowListDrop(nftContractAddress);
+    return {
+      mintPrice: drop.mintPrice,
+      maxTotalMintableByWallet: drop.maxTotalMintableByWallet,
+      startTime: drop.startTime,
+      endTime: drop.endTime,
+      dropStageIndex: drop.dropStageIndex,
+      maxTokenSupplyForStage: drop.maxTokenSupplyForStage,
+      feeBps: drop.feeBps,
+      restrictFeeRecipients: drop.restrictFeeRecipients
+    };
+  } catch (err) {
+    return null;
+  }
+}
+
 module.exports = {
   SEADROP_ABI,
   SEADROP_ADDRESSES,
   getPublicDropParams,
+  getAllowListDropParams,
   encodeMintPublicCalldata,
   resolveMintFeeRecipient
 };

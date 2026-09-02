@@ -3,6 +3,7 @@ const { getChainKey } = require('../utils/chains');
 const logger = require('../utils/logger');
 const Notifier = require('../utils/notifier');
 const { forwardNFTs } = require('./nftForwarder');
+const SeaportOfferEngine = require('../services/seaportOfferEngine');
 const MultiRpcBroadcaster = require('./multiRpcBroadcaster');
 const PreflightSimulator = require('./preflightSimulator');
 const connectionManager = require('../services/connectionManager');
@@ -15,9 +16,69 @@ const { resolveGasFees, formatGasSelection } = require('../utils/gasEstimator');
 const { waitForDropWindow, resolveLeadTimeMs, calibrateLeadTimeMs } = require('../core/dropClock');
 const gcGuard = require('../core/gcGuard');
 const { SequencerFeed } = require('../services/sequencerFeed');
+const { getAllowListDropParams, SEADROP_ADDRESSES } = require('../contracts/seadrop');
+
+/**
+ * Validate calldata price against armed expectations
+ * Note: MAX_MINT_ETH ceiling is strictly for Copy-Mint only. For Allowlist drops,
+ * the operator explicitly specifies the drop, so this watchdog protects against
+ * unauthorized Bait & Switch (Free -> Paid) and price hikes.
+ * @param {bigint} calldataValueWei 
+ * @param {bigint|null} expectedPriceWei 
+ * @param {boolean|null} expectedIsFree 
+ */
+function validateAllowlistPrice(calldataValueWei, expectedPriceWei, expectedIsFree) {
+  const valueEth = ethers.formatEther(calldataValueWei);
+
+  // 1. Bait & Switch: Expected Free -> Raised to Paid
+  if (expectedIsFree === true && calldataValueWei > 0n) {
+    throw new Error(`Bait & switch prevented: creator raised allowlist price from FREE (0.00 ETH) to ${valueEth} ETH.`);
+  }
+
+  // 2. Price Increase: Raised above expected paid price
+  if (expectedPriceWei !== null && expectedPriceWei > 0n && calldataValueWei > expectedPriceWei) {
+    const oldPriceEth = ethers.formatEther(expectedPriceWei);
+    throw new Error(`Price increase prevented: creator raised allowlist price from ${oldPriceEth} ETH to ${valueEth} ETH.`);
+  }
+
+  // 3. Paid -> Free (Price Drop)
+  if (expectedPriceWei !== null && expectedPriceWei > 0n && calldataValueWei === 0n) {
+    return { status: 'PRICE_DROPPED_TO_FREE', valueWei: 0n };
+  }
+
+  return { status: 'NORMAL', valueWei: calldataValueWei };
+}
+
+let openseaApiKeyIndex = 0;
+function getOpenSeaApiKeys() {
+  const raw = [
+    process.env.OPENSEA_API_KEY,
+    process.env.OPENSEA_API_KEY_2,
+    process.env.OPENSEA_API_KEY_3,
+    process.env.OPENSEA_KEY,
+    process.env.OPENSEA_KEYS
+  ].filter(Boolean);
+
+  const keys = [];
+  for (const item of raw) {
+    for (const key of String(item).split(/[\s,]+/)) {
+      const clean = key.trim();
+      if (clean && !keys.includes(clean)) keys.push(clean);
+    }
+  }
+  return keys;
+}
+
+function getNextOpenSeaApiKey() {
+  const keys = getOpenSeaApiKeys();
+  if (keys.length === 0) return '';
+  const key = keys[openseaApiKeyIndex % keys.length];
+  openseaApiKeyIndex++;
+  return key;
+}
 
 function getOpenSeaApiKey() {
-  return (process.env.OPENSEA_API_KEY || process.env.OPENSEA_KEY || '').trim();
+  return getNextOpenSeaApiKey();
 }
 
 function getDropSlug(config) {
@@ -59,16 +120,16 @@ function normalizeOpenSeaMintTransaction(payload) {
 /**
  * Fetch ready-to-sign mint transaction data from OpenSea Drops REST API (v2)
  */
-async function fetchSingleCalldata(wallet, config, authHeaders, requestTimeout = 8000) {
+async function fetchSingleCalldata(wallet, config, authHeaders, requestTimeout = 8000, specificApiKey = null) {
   const { quantity } = config;
-  const apiKey = getOpenSeaApiKey();
+  const apiKey = specificApiKey || getNextOpenSeaApiKey();
   const slug = getDropSlug(config);
 
   if (!slug) {
     throw new Error('Collection identifier is required to fetch drop mint data.');
   }
 
-  const safeQuantity = Math.max(1, Math.floor(Number(quantity) || 1));
+  let safeQuantity = Math.max(1, Math.floor(Number(quantity) || 1));
   const baseUrl = (process.env.OPENSEA_API_URL || 'https://api.opensea.io').replace(/\/+$/, '');
   const url = `${baseUrl}/api/v2/drops/${encodeURIComponent(slug)}/mint`;
 
@@ -82,27 +143,65 @@ async function fetchSingleCalldata(wallet, config, authHeaders, requestTimeout =
     headers['x-api-key'] = apiKey;
   }
 
-  const res = await connectionManager.axiosInstance.post(url, {
-    minter: ethers.getAddress(wallet.address),
-    quantity: safeQuantity
-  }, {
-    headers,
-    timeout: requestTimeout
-  });
+  try {
+    const res = await connectionManager.axiosInstance.post(url, {
+      minter: ethers.getAddress(wallet.address),
+      quantity: safeQuantity
+    }, {
+      headers,
+      timeout: requestTimeout
+    });
 
-  return normalizeOpenSeaMintTransaction(res.data);
+    return normalizeOpenSeaMintTransaction(res.data);
+  } catch (error) {
+    const apiMsg = String(error.response?.data?.message || error.response?.data?.detail || error.message).toLowerCase();
+
+    // Dynamic Quota Auto-Sensing: If quantity > 1 and error mentions quota/allocation, auto-clamp to 1
+    if (safeQuantity > 1 && (apiMsg.includes('allocation') || apiMsg.includes('quota') || apiMsg.includes('max') || apiMsg.includes('quantity'))) {
+      logger.warn(`[${wallet.address.slice(0, 6)}...] Allocation quota exceeded for quantity ${safeQuantity}. Auto-clamping to 1...`);
+      safeQuantity = 1;
+      const retryRes = await connectionManager.axiosInstance.post(url, {
+        minter: ethers.getAddress(wallet.address),
+        quantity: 1
+      }, {
+        headers,
+        timeout: requestTimeout
+      });
+      return normalizeOpenSeaMintTransaction(retryRes.data);
+    }
+
+    // Rate Limit 429 Failover: Try next available API key
+    if (error.response?.status === 429) {
+      const backupKey = getNextOpenSeaApiKey();
+      if (backupKey && backupKey !== apiKey) {
+        headers['x-api-key'] = backupKey;
+        const retryRes = await connectionManager.axiosInstance.post(url, {
+          minter: ethers.getAddress(wallet.address),
+          quantity: safeQuantity
+        }, {
+          headers,
+          timeout: requestTimeout
+        });
+        return normalizeOpenSeaMintTransaction(retryRes.data);
+      }
+    }
+
+    throw error;
+  }
 }
 
 /**
- * Fetch calldata concurrently for all session wallets
+ * Fetch calldata concurrently for all session wallets with distributed multi-key pipelining
  */
 async function fetchAllCalldata(wallets, config, authHeadersByAddress, fallbackAuthHeaders, requestTimeout = 8000) {
   const calldataMap = new Map();
+  const keys = getOpenSeaApiKeys();
 
-  const settled = await Promise.allSettled(wallets.map(async (wallet) => {
+  const settled = await Promise.allSettled(wallets.map(async (wallet, idx) => {
+    const assignedKey = keys.length > 0 ? keys[idx % keys.length] : null;
     try {
       const headers = authHeadersByAddress.get(wallet.address.toLowerCase()) || fallbackAuthHeaders;
-      const data = await fetchSingleCalldata(wallet, config, headers, requestTimeout);
+      const data = await fetchSingleCalldata(wallet, config, headers, requestTimeout, assignedKey);
       return { wallet, data, error: null };
     } catch (error) {
       const apiMessage = error.response?.data?.message || error.response?.data?.detail || error.response?.data?.error;
@@ -191,8 +290,36 @@ async function executeAllowlistMint(config, state) {
     logger.speed(`Write path: ${sequencerTarget.label} (direct sequencer ingress, no forwarding hop)`);
   }
 
+  // Pre-check balances for gas & potential mint value
+  const initialGasFees = await ensureGasFees();
+  const minRequiredGasWei = initialGasFees.maxFeePerGas * BigInt(gasSettings.gasLimit || 300000);
+  for (const wallet of wallets) {
+    try {
+      const bal = await provider.getBalance(wallet.address);
+      if (bal < minRequiredGasWei) {
+        logger.warn(`Wallet ${wallet.address.slice(0, 6)}... has low ETH balance: ${ethers.formatEther(bal)} ETH (Est. Gas needed: ${ethers.formatEther(minRequiredGasWei)} ETH)`);
+      }
+    } catch (e) {}
+  }
+
   // Pre-fetch nonces
   let nonceMap = await WalletService.prefetchNonces(wallets, provider);
+
+  // 0. Discover on-chain allowlist stage parameters if on SeaDrop
+  const seadropAddr = SEADROP_ADDRESSES[chainKey] || chainConfig.seadropAddress;
+  let armedPriceWei = null;
+  let isFreeMint = null;
+  if (seadropAddr && nftContractAddress) {
+    try {
+      const onChainDrop = await getAllowListDropParams(provider, seadropAddr, nftContractAddress);
+      if (onChainDrop) {
+        armedPriceWei = onChainDrop.mintPrice;
+        isFreeMint = (armedPriceWei === 0n);
+        const priceEth = ethers.formatEther(armedPriceWei);
+        logger.info(`On-chain Allowlist Stage: Price = ${priceEth} ETH (Max Mintable: ${onChainDrop.maxTotalMintableByWallet})`);
+      }
+    } catch (e) {}
+  }
 
   let calldataMap = new Map();
   let calldataFetchedAtMs = 0;
@@ -273,6 +400,21 @@ async function executeAllowlistMint(config, state) {
     const fees = await ensureGasFees();
     logger.info('Pre-signing transactions offline...');
 
+    // Price Watchdog: Validate price across all fetched calldata before signing
+    for (const [addr, calldata] of calldataMap.entries()) {
+      const calldataVal = BigInt(calldata.value || 0);
+      try {
+        const valRes = validateAllowlistPrice(calldataVal, armedPriceWei, isFreeMint);
+        if (valRes.status === 'PRICE_DROPPED_TO_FREE') {
+          calldata.value = '0';
+        }
+      } catch (priceErr) {
+        logger.error(`🚨 PRICE WATCHDOG TRIGGERED: ${priceErr.message}`);
+        Notifier.sendAlert(`🚨 **Security Alert (Allowlist Mint Aborted)**\n${priceErr.message}`);
+        throw priceErr;
+      }
+    }
+
     const prepared = await Promise.all(wallets.map(async (wallet) => {
       const calldata = calldataMap.get(wallet.address.toLowerCase());
       if (!calldata) {
@@ -324,11 +466,58 @@ async function executeAllowlistMint(config, state) {
     label: 'Allowlist mint',
     milestones: [
       {
-        atMs: 15000,
-        label: 'T-15s: Refreshing nonces',
+        atMs: 30000,
+        label: 'T-30s: Pre-flight eligibility probe',
         run: async () => {
-          logger.info('T-15s: Refreshing wallet nonces...');
+          logger.info('T-30s: Probing allowlist eligibility across session wallets...');
+          try {
+            const earlyCheck = await fetchCalldata(1500);
+            if (earlyCheck && earlyCheck.size > 0) {
+              logger.success(`Eligibility verified early for ${earlyCheck.size}/${wallets.length} wallet(s).`);
+              for (const [addr, data] of earlyCheck) {
+                calldataMap.set(addr, data);
+              }
+            }
+          } catch (e) {}
+        }
+      },
+      {
+        atMs: 15000,
+        label: 'T-15s: Refreshing nonces & verifying allowlist price integrity',
+        run: async () => {
+          logger.info('T-15s: Refreshing wallet nonces and verifying allowlist price...');
           nonceMap = await WalletService.prefetchNonces(wallets, provider);
+
+          if (seadropAddr && nftContractAddress) {
+            try {
+              const freshDrop = await getAllowListDropParams(provider, seadropAddr, nftContractAddress);
+              if (freshDrop && armedPriceWei !== null && freshDrop.mintPrice !== armedPriceWei) {
+                const oldPriceEth = ethers.formatEther(armedPriceWei);
+                const newPriceEth = ethers.formatEther(freshDrop.mintPrice);
+
+                // Bait & switch check: Free -> Paid
+                if (isFreeMint && freshDrop.mintPrice > 0n) {
+                  logger.error(`🚨 BAIT & SWITCH DETECTED: Allowlist drop price changed from FREE (0.00 ETH) to ${newPriceEth} ETH!`);
+                  Notifier.sendAlert(`🚨 **Bait & Switch Prevented on Allowlist!**\nCreator changed price from FREE to **${newPriceEth} ETH**.\nMint aborted to protect wallets.`);
+                  throw new Error(`Bait & switch prevented: creator raised allowlist price on free drop to ${newPriceEth} ETH.`);
+                }
+
+                // Price increased
+                if (freshDrop.mintPrice > armedPriceWei) {
+                  logger.error(`🚨 PRICE INCREASE DETECTED: Allowlist price increased from ${oldPriceEth} ETH to ${newPriceEth} ETH!`);
+                  Notifier.sendAlert(`🚨 **Price Increase Prevented on Allowlist!**\nCreator raised price from ${oldPriceEth} ETH to **${newPriceEth} ETH**.\nMint aborted.`);
+                  throw new Error(`Price increase prevented: creator changed allowlist price from ${oldPriceEth} ETH to ${newPriceEth} ETH.`);
+                }
+
+                // Price decreased
+                logger.warn(`⚠️ On-chain allowlist price decreased: ${oldPriceEth} ETH -> ${newPriceEth} ETH. Updating armed price...`);
+                armedPriceWei = freshDrop.mintPrice;
+                isFreeMint = (armedPriceWei === 0n);
+              }
+            } catch (err) {
+              if (err.message.includes('prevented')) throw err;
+            }
+          }
         }
       },
       {
@@ -565,6 +754,9 @@ async function executeAllowlistMint(config, state) {
           network: chainConfig?.name || network.name,
           contractAddress: nftContractAddress,
           walletAddress: wallet.address,
+          address: wallet.address,
+          wallet,
+          receipt,
           maskedAddress: `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`,
           mode: 'ALLOWLIST',
           quantity,
@@ -644,6 +836,9 @@ async function executeAllowlistMint(config, state) {
                   network: chainConfig?.name || network.name,
                   contractAddress: nftContractAddress,
                   walletAddress: wallet.address,
+                  address: wallet.address,
+                  wallet,
+                  receipt: retryWait.receipt,
                   maskedAddress: `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`,
                   mode: 'ALLOWLIST',
                   quantity,
@@ -768,10 +963,25 @@ async function executeAllowlistMint(config, state) {
   // Print Speed Performance Report
   logger.speedReport(results, totalSessionMs);
 
-  // 6. Auto-forward NFTs if recipient configured
+  // 6. Post-Mint Disposition: Auto-Sell to Top Offer OR Auto-Forward to Recipient
   const successfulResults = results.filter(r => r.status === 'SUCCESS' && r.txHash);
-  if (recipientAddress && successfulResults.length > 0) {
-    await forwardNFTs(successfulResults, wallets, provider, recipientAddress, explorerUrl);
+  if (successfulResults.length > 0) {
+    if (config.postMintConfig?.action === 'TOP_OFFER') {
+      await SeaportOfferEngine.executeOfferFulfillment({
+        results: successfulResults,
+        wallets,
+        provider,
+        nftContractAddress,
+        collectionSlug: config.collectionSlug,
+        postMintConfig: config.postMintConfig,
+        explorerUrl
+      });
+    } else if (recipientAddress || config.postMintConfig?.action === 'RECIPIENT') {
+      const targetRecipient = recipientAddress || config.postMintConfig?.recipientAddress;
+      if (targetRecipient) {
+        await forwardNFTs(successfulResults, wallets, provider, targetRecipient, explorerUrl);
+      }
+    }
   }
 
   // Non-blocking async history recording with timestamps & session duration
@@ -809,4 +1019,10 @@ async function runAllowlistMint(config) {
   }
 }
 
-module.exports = { runAllowlistMint, fetchSingleCalldata, normalizeOpenSeaMintTransaction };
+module.exports = {
+  runAllowlistMint,
+  fetchSingleCalldata,
+  normalizeOpenSeaMintTransaction,
+  validateAllowlistPrice,
+  getOpenSeaApiKeys
+};

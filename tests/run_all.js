@@ -9,7 +9,10 @@ const testFiles = [
   'test_copymint.js',
   'test_copymint_pnl.js',
   'test_wallet_selector.js',
-  'test_infra_improvements.js'
+  'test_infra_improvements.js',
+  'test_gas_tracker.js',
+  'test_seaport_offers.js',
+  'test_allowlist_watchdog.js'
 ];
 
 let failed = false;

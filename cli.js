@@ -23,6 +23,7 @@ const TrackerEngine = require('./src/engines/trackerEngine');
 const CopyMintEngine = require('./src/engines/copyMintEngine');
 const trackedWalletService = require('./src/services/trackedWalletService');
 const copyMintPnL = require('./src/services/copyMintPnL');
+const GasTracker = require('./src/services/gasTracker');
 const PnLCardGenerator = require('./src/utils/pnlCardGenerator');
 
 async function main() {
@@ -58,6 +59,10 @@ async function main() {
           {
             name: '🔑 Bulk Wallet Generator (Burner Creation & Funding)',
             value: 'GENERATE'
+          },
+          {
+            name: '⛽ Real-Time Gas Tracker & Network Traffic Gauge',
+            value: 'GAS'
           }
         ]
       }
@@ -71,6 +76,9 @@ async function main() {
     }
     if (mintMode === 'GENERATE') {
       return await generateWalletsMode();
+    }
+    if (mintMode === 'GAS') {
+      return await liveGasTrackerMode();
     }
 
     // ---------------------------------------------------------
@@ -156,38 +164,8 @@ async function main() {
     // Pre-check balances
     await WalletService.checkBalances(wallets, provider);
 
-    // ---------------------------------------------------------
-    // STEP 4: NFT Recipient Forwarding Address
-    // ---------------------------------------------------------
-    logger.separator();
-    const envRecipient = (process.env.RECIPIENT_ADDRESS || '').trim();
-    const recipientPromptConfig = {
-      type: 'input',
-      name: 'recipientInput',
-      message: 'Recipient address to forward minted NFTs to (Press Enter to keep in minting wallets):',
-      validate: input => {
-        if (!input || !input.trim() || input.trim() === 'undefined' || input.trim().toLowerCase() === 'none') {
-          return true;
-        }
-        return ethers.isAddress(input.trim()) ? true : 'Invalid Ethereum address (must start with 0x)';
-      }
-    };
-
-    if (envRecipient && ethers.isAddress(envRecipient)) {
-      recipientPromptConfig.default = envRecipient;
-    }
-
-    const { recipientInput } = await inquirer.prompt([recipientPromptConfig]);
-    const rawRecipient = (recipientInput || '').trim();
-    const recipientAddress = (rawRecipient && rawRecipient !== 'undefined' && rawRecipient.toLowerCase() !== 'none' && ethers.isAddress(rawRecipient))
-      ? ethers.getAddress(rawRecipient)
-      : null;
-
-    if (recipientAddress) {
-      logger.success(`NFTs will be automatically forwarded to: ${recipientAddress}`);
-    } else {
-      logger.info('NFTs will remain in their respective minting wallets.');
-    }
+    let recipientAddress = null;
+    let postMintConfig = { action: 'KEEP', scope: 'ALL', minPriceEth: 0, recipientAddress: null };
 
     // ---------------------------------------------------------
     // STEP 5: Collection Identifier (URL / Slug / Contract)
@@ -258,22 +236,126 @@ async function main() {
     ]);
 
     // ---------------------------------------------------------
-    // STEP 7: Gas Configuration (Auto-Optimized — Zero Friction)
+    // STEP 7: Gas Configuration (Interactive Gwei & $$ Selector)
     // ---------------------------------------------------------
     logger.separator();
     const isL2 = chainConfig.chainId !== 1; // Robinhood, Base, Arbitrum, Optimism, etc.
-    let liveBaseFeeGwei = isL2 ? '0.04' : '25.0';
+    const ethPriceUsd = await getEthPriceUsd().catch(() => 2400);
+    let liveBaseFeeGwei = isL2 ? 0.04 : 25.0;
     try {
       const feeData = await provider.getFeeData();
-      if (feeData.maxFeePerGas) {
-        liveBaseFeeGwei = ethers.formatUnits(feeData.maxFeePerGas, 'gwei');
+      if (feeData.gasPrice) {
+        liveBaseFeeGwei = Number(ethers.formatUnits(feeData.gasPrice, 'gwei'));
+      } else if (feeData.maxFeePerGas) {
+        liveBaseFeeGwei = Number(ethers.formatUnits(feeData.maxFeePerGas, 'gwei'));
       }
     } catch (e) {}
 
-    // Auto-resolve optimal gas profile for the target chain
-    const defaultPreset = isL2 ? 'turbo' : 'ultra';
-    const gasSettings = resolveGasPreset(defaultPreset, { isL2, liveBaseFeeGwei });
-    logger.speed(`⚡ Gas Profile: Auto-Optimized for ${chainConfig.name} (Max Fee: ${gasSettings.maxFeePerGas} Gwei | Priority Tip: ${gasSettings.maxPriorityFeePerGas} Gwei)`);
+    // Helper for per-mint dollar estimation (assuming ~200k gas)
+    const calcCostUsd = (maxFeeGwei) => {
+      const ethVal = (Number(maxFeeGwei) * 1e-9 * 200000);
+      return (ethVal * ethPriceUsd).toFixed(2);
+    };
+
+    let stdMaxGwei, stdTipGwei, turboMaxGwei, turboTipGwei, hypedMaxGwei, hypedTipGwei;
+    if (isL2) {
+      stdMaxGwei = (Math.max(liveBaseFeeGwei * 1.2, 0.05)).toFixed(3);
+      stdTipGwei = '0.005';
+
+      turboMaxGwei = (Math.max(liveBaseFeeGwei * 1.8, 0.15)).toFixed(3);
+      turboTipGwei = '0.010';
+
+      hypedMaxGwei = (Math.max(liveBaseFeeGwei * 3.0, 0.50)).toFixed(3);
+      hypedTipGwei = '0.050';
+    } else {
+      stdMaxGwei = (Math.max(liveBaseFeeGwei * 1.15, 20.0)).toFixed(1);
+      stdTipGwei = '1.5';
+
+      turboMaxGwei = (Math.max(liveBaseFeeGwei * 1.4, 30.0)).toFixed(1);
+      turboTipGwei = '3.0';
+
+      hypedMaxGwei = (Math.max(liveBaseFeeGwei * 2.0, 50.0)).toFixed(1);
+      hypedTipGwei = '6.0';
+    }
+
+    const { gasPresetChoice } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'gasPresetChoice',
+        message: `⛽ Gas Profile (Live Base: ${liveBaseFeeGwei.toFixed(3)} Gwei | ETH: $${ethPriceUsd.toFixed(0)}):`,
+        choices: [
+          {
+            name: `⚡ Turbo (Recommended)  | Max: ${turboMaxGwei} Gwei | Tip: ${turboTipGwei} Gwei (~$${calcCostUsd(turboMaxGwei)} USD/mint)`,
+            value: 'turbo'
+          },
+          {
+            name: `🚀 Hyped War Mode        | Max: ${hypedMaxGwei} Gwei | Tip: ${hypedTipGwei} Gwei (~$${calcCostUsd(hypedMaxGwei)} USD/mint)`,
+            value: 'hyped'
+          },
+          {
+            name: `🐢 Standard (Economic)   | Max: ${stdMaxGwei} Gwei | Tip: ${stdTipGwei} Gwei (~$${calcCostUsd(stdMaxGwei)} USD/mint)`,
+            value: 'standard'
+          },
+          {
+            name: `🛠️ Custom Manual Entry    | Specify your own Max Fee & Tip in Gwei`,
+            value: 'custom'
+          }
+        ],
+        default: 'turbo'
+      }
+    ]);
+
+    let gasSettings;
+    if (gasPresetChoice === 'custom') {
+      const customAnswers = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'customMaxFee',
+          message: 'Enter Max Fee Per Gas in Gwei:',
+          default: turboMaxGwei,
+          validate: v => (!isNaN(parseFloat(v)) && parseFloat(v) > 0) || 'Please enter a valid positive number'
+        },
+        {
+          type: 'input',
+          name: 'customPriorityFee',
+          message: 'Enter Priority Tip in Gwei:',
+          default: turboTipGwei,
+          validate: v => (!isNaN(parseFloat(v)) && parseFloat(v) >= 0) || 'Please enter a valid number'
+        }
+      ]);
+
+      gasSettings = {
+        maxFeePerGas: String(parseFloat(customAnswers.customMaxFee)),
+        maxPriorityFeePerGas: String(parseFloat(customAnswers.customPriorityFee)),
+        gasLimit: 300000,
+        preset: 'custom'
+      };
+    } else if (gasPresetChoice === 'hyped') {
+      gasSettings = {
+        maxFeePerGas: hypedMaxGwei,
+        maxPriorityFeePerGas: hypedTipGwei,
+        gasLimit: 300000,
+        preset: 'hyped'
+      };
+    } else if (gasPresetChoice === 'standard') {
+      gasSettings = {
+        maxFeePerGas: stdMaxGwei,
+        maxPriorityFeePerGas: stdTipGwei,
+        gasLimit: 300000,
+        preset: 'standard'
+      };
+    } else {
+      gasSettings = {
+        maxFeePerGas: turboMaxGwei,
+        maxPriorityFeePerGas: turboTipGwei,
+        gasLimit: 300000,
+        preset: 'turbo'
+      };
+    }
+
+    const estGasCostEth = ethers.formatEther(BigInt(gasSettings.gasLimit || 200000) * ethers.parseUnits(gasSettings.maxFeePerGas, 'gwei'));
+    const estGasCostUsd = convertEthToUsd(estGasCostEth, ethPriceUsd);
+    logger.speed(`⚡ Gas Profile: ${gasSettings.preset.toUpperCase()} selected (Max Fee: ${gasSettings.maxFeePerGas} Gwei | Priority Tip: ${gasSettings.maxPriorityFeePerGas} Gwei | Est. ~$${estGasCostUsd} USD per mint)`);
 
     // ---------------------------------------------------------
     // STEP 8: Timing & Scheduling
@@ -400,15 +482,153 @@ async function main() {
     }
 
     // ---------------------------------------------------------
+    // STEP 8b: Post-Mint Disposition (Top Offer vs Recipient vs Keep)
+    // ---------------------------------------------------------
+    logger.separator();
+    const envRecipient = (process.env.RECIPIENT_ADDRESS || '').trim();
+
+    const { postAction } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'postAction',
+        message: 'Post-Mint Action for Minted NFTs:',
+        choices: [
+          { name: '💰 Accept Top Collection Offer on Seaport 1.6 (Instant Flip / Auto-Sell)', value: 'TOP_OFFER' },
+          { name: '📦 Send to Recipient Wallet (Auto-Forward)', value: 'RECIPIENT' },
+          { name: '🔒 Keep in Minting Wallets', value: 'KEEP' }
+        ],
+        default: 'TOP_OFFER'
+      }
+    ]);
+
+    if (postAction === 'TOP_OFFER') {
+      const { offerScope } = await inquirer.prompt([
+        {
+          type: 'list',
+          name: 'offerScope',
+          message: 'Fulfill Top Offer for Which Tokens?',
+          choices: [
+            { name: '🌟 ALL Minted Tokens (Sell 100% of minted NFTs)', value: 'ALL' },
+            { name: '⚖️  SOME Tokens (Specify quantity or percentage to sell)', value: 'SOME' }
+          ]
+        }
+      ]);
+
+      let sellCount = 1;
+      let remainderAction = 'KEEP';
+
+      if (offerScope === 'SOME') {
+        const totalPossible = wallets.length * quantity;
+        const { someQuantity, remainderChoice } = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'someQuantity',
+            message: `How many NFTs to sell into top offer? (1 to ${totalPossible}):`,
+            default: Math.max(1, Math.floor(totalPossible / 2)).toString(),
+            validate: val => {
+              const n = parseInt(val);
+              return (!isNaN(n) && n >= 1 && n <= totalPossible) ? true : `Enter a number between 1 and ${totalPossible}`;
+            }
+          },
+          {
+            type: 'list',
+            name: 'remainderChoice',
+            message: 'What should happen to the remaining (unsold) NFTs?',
+            choices: [
+              { name: '📦 Send remaining to Recipient Wallet', value: 'RECIPIENT' },
+              { name: '🔒 Keep remaining in Minting Wallets', value: 'KEEP' }
+            ]
+          }
+        ]);
+        sellCount = parseInt(someQuantity);
+        remainderAction = remainderChoice;
+      }
+
+      const { minOfferPrice } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'minOfferPrice',
+          message: 'Minimum acceptable net offer price in ETH (Safety floor limit, 0 = any offer):',
+          default: '0.00',
+          validate: val => (!isNaN(parseFloat(val)) && parseFloat(val) >= 0 ? true : 'Enter valid ETH number (e.g. 0.05)')
+        }
+      ]);
+
+      let offerRecipient = null;
+      if (remainderAction === 'RECIPIENT') {
+        const { recAddr } = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'recAddr',
+            message: 'Recipient address for remaining NFTs:',
+            default: (envRecipient && ethers.isAddress(envRecipient)) ? envRecipient : undefined,
+            validate: input => (ethers.isAddress(input.trim()) ? true : 'Invalid Ethereum address (must start with 0x)')
+          }
+        ]);
+        offerRecipient = ethers.getAddress(recAddr.trim());
+      }
+
+      postMintConfig = {
+        action: 'TOP_OFFER',
+        scope: offerScope,
+        sellCount,
+        minPriceEth: parseFloat(minOfferPrice),
+        remainderAction,
+        recipientAddress: offerRecipient
+      };
+      recipientAddress = offerRecipient;
+
+      logger.success(`Seaport Auto-Sell Armed: ${offerScope === 'ALL' ? 'ALL tokens' : sellCount + ' token(s)'} (Floor: >= ${minOfferPrice} ETH)`);
+    } else if (postAction === 'RECIPIENT') {
+      const { recAddr } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'recAddr',
+          message: 'Recipient address to forward minted NFTs to:',
+          default: (envRecipient && ethers.isAddress(envRecipient)) ? envRecipient : undefined,
+          validate: input => (ethers.isAddress(input.trim()) ? true : 'Invalid Ethereum address (must start with 0x)')
+        }
+      ]);
+      recipientAddress = ethers.getAddress(recAddr.trim());
+      postMintConfig = { action: 'RECIPIENT', recipientAddress };
+      logger.success(`NFTs will be automatically forwarded to: ${recipientAddress}`);
+    } else {
+      postMintConfig = { action: 'KEEP' };
+      logger.info('NFTs will remain in their respective minting wallets.');
+    }
+
+    // ---------------------------------------------------------
     // STEP 9: Summary & Confirmation
     // ---------------------------------------------------------
+
+    let enableQuickNode = false;
+    if (process.env.QUICKNODE_URL && process.env.QUICKNODE_URL.trim()) {
+      if (process.env.USE_QUICKNODE_ONLY_FOR_VITAL_MINTS === 'true') {
+        const { useQn } = await inquirer.prompt([
+          {
+            type: 'confirm',
+            name: 'useQn',
+            message: '⚡ Engage QuickNode VIP Endpoint for this drop? (Vital Mint Mode)',
+            default: false
+          }
+        ]);
+        enableQuickNode = useQn;
+        if (enableQuickNode) {
+          logger.speed('🚀 QuickNode VIP endpoint engaged for vital drop racing.');
+        } else {
+          logger.info('QuickNode VIP preserved (standard multi-RPC endpoints active).');
+        }
+      } else {
+        enableQuickNode = true;
+      }
+    }
 
     // Build the ordered endpoint pool before the summary so the operator can see
     // which path writes will take. On a FIFO chain the ordering matters: the
     // sequencer's write ingress goes first (it is the only node that can order a
     // transaction — everything else forwards to it) and is tagged broadcast-only
     // so nothing tries to read state through it.
-    const { endpoints, urls: rpcUrls, feedUrl } = buildEndpoints(chainConfig, rpcUrl);
+    const { endpoints, urls: rpcUrls, feedUrl } = buildEndpoints(chainConfig, rpcUrl, { enableQuickNode });
 
     logger.separator();
     console.log(logger.summaryTable ? '' : '');
@@ -418,8 +638,15 @@ async function main() {
     console.log(`NFT Contract:   ${nftContractAddress}`);
     console.log(`Wallets:        ${wallets.length} wallet(s) loaded`);
     console.log(`Quantity/Wallet:${quantity} (Total: ${wallets.length * quantity})`);
-    console.log(`Recipient:      ${recipientAddress || 'None (Stay in minting wallets)'}`);
-    console.log(`Max Fee:        ${gasSettings.maxFeePerGas} Gwei | Tip: ${gasSettings.maxPriorityFeePerGas} Gwei`);
+    const postMintSummary = postMintConfig.action === 'TOP_OFFER'
+      ? `💰 Auto-Sell Top Offer on Seaport (${postMintConfig.scope === 'ALL' ? 'ALL tokens' : postMintConfig.sellCount + ' token(s)'} | Floor >= ${postMintConfig.minPriceEth} ETH${postMintConfig.scope === 'SOME' && postMintConfig.remainderAction === 'RECIPIENT' ? ' | Remainder -> ' + postMintConfig.recipientAddress.slice(0, 6) + '...' : ''})`
+      : (recipientAddress ? `📦 Auto-Forward to ${recipientAddress}` : '🔒 Stay in minting wallets');
+    console.log(`Post-Mint:      ${postMintSummary}`);
+    console.log(`Max Fee:        ${gasSettings.maxFeePerGas} Gwei (~$${estGasCostUsd} USD each) | Tip: ${gasSettings.maxPriorityFeePerGas} Gwei`);
+    console.log(`Total Est. Gas: ~$${(parseFloat(estGasCostUsd) * wallets.length).toFixed(2)} USD for ${wallets.length} wallet(s)`);
+    if (process.env.QUICKNODE_URL && process.env.QUICKNODE_URL.trim()) {
+      console.log(`QuickNode VIP:  ${enableQuickNode ? 'ENGAGED (Vital Mint Mode)' : 'OFF (Preserved)'}`);
+    }
     console.log(`Write Path:     ${endpoints.map(e => e.label).join(' → ') || 'none'}`);
     console.log(`Sequencer Feed: ${feedUrl || 'disabled (will poll blocks for drop time)'}`);
     const leadTimeDisplay = (process.env.SNIPER_LEAD_TIME_MS || '').trim()
@@ -456,7 +683,8 @@ async function main() {
       quantity,
       gasSettings,
       startTime,
-      recipientAddress
+      recipientAddress,
+      postMintConfig
     };
 
     if (mintMode === 'PUBLIC') {
@@ -938,6 +1166,95 @@ async function generateWalletsMode() {
 }
 
 /**
+ * Live Gas Tracker Mode (--gas flag or menu choice)
+ */
+async function liveGasTrackerMode() {
+  console.clear();
+  logger.banner();
+  logger.info('⛽ Real-Time Gas Tracker & Network Traffic Gauge');
+  logger.separator();
+
+  try {
+    const chainChoices = getChainChoices();
+    chainChoices.push({ name: '🔧 Custom EVM RPC Endpoint', value: 'CUSTOM' });
+
+    const { selectedChain } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'selectedChain',
+        message: 'Select Chain to track live gas on:',
+        choices: chainChoices,
+        default: chainChoices.find(c => c.value?.name?.includes('Robinhood'))?.value || chainChoices[0].value
+      }
+    ]);
+
+    let rpcUrl = '';
+    let chainConfig = selectedChain;
+
+    if (selectedChain === 'CUSTOM') {
+      const { customRpc, customChainId } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'customRpc',
+          message: 'Enter RPC URL:',
+          validate: input => (input.trim().length > 0 ? true : 'RPC URL is required')
+        },
+        {
+          type: 'number',
+          name: 'customChainId',
+          message: 'Enter Chain ID:',
+          default: 4663
+        }
+      ]);
+      rpcUrl = customRpc.trim();
+      chainConfig = { name: 'Custom', chainId: customChainId, defaultRpc: rpcUrl };
+    } else {
+      const defaultChainRpc = selectedChain.alchemyPrefix && process.env.ALCHEMY_KEY
+        ? expandAlchemyKey(process.env.ALCHEMY_KEY, selectedChain)
+        : (selectedChain.defaultRpc || process.env.DEFAULT_RPC_URL);
+
+      const { rpcInput } = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'rpcInput',
+          message: `RPC Endpoint for ${selectedChain.name}:`,
+          default: defaultChainRpc
+        }
+      ]);
+      rpcUrl = expandAlchemyKey(rpcInput.trim(), selectedChain);
+    }
+
+    const provider = connectionManager.createEthersProvider(rpcUrl, chainConfig.chainId);
+    await GasTracker.displayDashboard(provider, chainConfig);
+
+    const { action } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'action',
+        message: 'Gas Tracker Options:',
+        choices: [
+          { name: '🔄 Refresh Live Gas Metrics', value: 'REFRESH' },
+          { name: '🌐 Switch Chain', value: 'SWITCH' },
+          { name: '↩️  Return to Main Menu', value: 'MENU' },
+          { name: '❌ Exit', value: 'EXIT' }
+        ]
+      }
+    ]);
+
+    if (action === 'REFRESH' || action === 'SWITCH') {
+      return await liveGasTrackerMode();
+    } else if (action === 'MENU') {
+      return await main();
+    } else {
+      process.exit(0);
+    }
+  } catch (err) {
+    logger.error(`Gas tracker failed: ${err.message}`);
+    process.exit(1);
+  }
+}
+
+/**
  * Balance Checker Mode (--balance flag)
  * Checks live ETH balance, USD value, and Nonce for any wallet(s) across any chain
  */
@@ -1009,6 +1326,7 @@ async function checkBalancesMode() {
     try {
       const net = await provider.getNetwork();
       logger.success(`Connected to network (Chain ID: ${net.chainId})`);
+      await GasTracker.displayDashboard(provider, chainConfig);
     } catch (rpcErr) {
       logger.error(`Could not connect to RPC: ${rpcErr.message}`);
       process.exit(1);
@@ -1671,6 +1989,8 @@ if (args.includes('--check') || args.includes('-c') || args.includes('check')) {
   generateWalletsMode();
 } else if (args.includes('--balance') || args.includes('-b') || args.includes('--bal') || args.includes('balance')) {
   checkBalancesMode();
+} else if (args.includes('--gas') || args.includes('--gastracker') || args.includes('gas')) {
+  liveGasTrackerMode();
 } else if (args.includes('--copymint') || args.includes('-cm') || args.includes('copymint')) {
   copyMintWizardMode();
 } else {

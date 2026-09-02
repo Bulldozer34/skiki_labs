@@ -68,6 +68,8 @@ async function run() {
 
   if (failedTests > 0) {
     process.exit(1);
+  } else {
+    process.exit(0);
   }
 }
 

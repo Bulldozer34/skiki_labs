@@ -9,14 +9,15 @@ Control and execute high-speed NFT mints directly from your phone over Telegram 
 ## 📑 Table of Contents
 
 1. [✨ Key Capabilities](#-key-capabilities)
-2. [📱 24/7 Telegram Mobile Daemon](#-247-telegram-mobile-daemon)
-3. [⚡ Speed & Sequencer Ingress Architecture](#-speed--sequencer-ingress-architecture)
-4. [📦 Asset Sweeper & Consolidation Tool](#-asset-sweeper--consolidation-tool)
-5. [📊 Mint Analytics & Telemetry Engine](#-mint-analytics--telemetry-engine)
-6. [🚀 Quickstart Guide (Local PC)](#-quickstart-guide-local-pc)
-7. [☁️ 24/7 AWS EC2 Cloud Deployment Guide](#️-247-aws-ec2-cloud-deployment-guide)
-8. [⚙️ Environment Configuration (`.env`)](#-environment-configuration-env)
-9. [🔒 Security Best Practices](#-security-best-practices)
+2. [🧩 Complete Feature Guide (The 5 Bot Engines)](#-complete-feature-guide-the-5-bot-engines)
+3. [📱 24/7 Telegram Mobile Daemon](#-247-telegram-mobile-daemon)
+4. [⚡ Speed & Sequencer Ingress Architecture](#-speed--sequencer-ingress-architecture)
+5. [📦 Asset Sweeper & Consolidation Tool](#-asset-sweeper--consolidation-tool)
+6. [📊 Mint Analytics & Telemetry Engine](#-mint-analytics--telemetry-engine)
+7. [🚀 Quickstart Guide (Local PC)](#-quickstart-guide-local-pc)
+8. [☁️ 24/7 VPS / Cloud Deployment Guide](#️-247-vps--cloud-deployment-guide)
+9. [⚙️ Environment Configuration (`.env`)](#-environment-configuration-env)
+10. [🔒 Security Best Practices](#-security-best-practices)
 
 ---
 
@@ -32,6 +33,101 @@ Control and execute high-speed NFT mints directly from your phone over Telegram 
 | **📦 Selective Asset Sweeper** | Consolidates minted NFTs and drains leftover ETH to your main wallet | 1-click move tokens and funds from all burner wallets to cold storage |
 | **📊 Real-Time Gas & Gwei Feed** | Queries live on-chain Base Fee in Gwei across all menus | Always know current gas conditions on L1 and L2 networks |
 | **🏎️ Multi-RPC Parallel Racing** | Broadcasts across Sequencer, Alchemy, and Ankr nodes simultaneously | Fastest node confirms first with zero dropped packets |
+
+---
+
+## 🧩 Complete Feature Guide (The 5 Bot Engines)
+
+The bot is structured into **5 specialized, interconnected engines** designed to handle every facet of NFT sniping, flipping, tracking, and wallet operations.
+
+```
+                                  ┌──────────────────────────────────────────────┐
+                                  │      ⚡ SHIKI LABS NFT BOT ECOSYSTEM        │
+                                  └──────────────────────────────────────────────┘
+                                                         │
+         ┌───────────────────┬───────────────────────────┼───────────────────────────┬───────────────────┐
+         ▼                   ▼                           ▼                           ▼                   ▼
+┌──────────────────┐┌──────────────────┐┌─────────────────────────────────┐┌──────────────────┐┌──────────────────┐
+│  ENGINE 1        ││  ENGINE 2        ││  ENGINE 3                       ││  ENGINE 4        ││  ENGINE 5        │
+│  Public SeaDrop  ││  Allowlist/FCFS  ││  Copy-Mint & Whale Tracker      ││  Wallet Tools    ││  24/7 Mobile     │
+│  Direct On-Chain ││  OpenSea SIWE    ││  Mempool Stream & Rewriter      ││  & Gas Tracker   ││  Telegram Daemon │
+│  + Auto-Sell     ││  Calldata Hammer ││  Instant Token Replicator       ││  Balance & Nonce ││  Cloud/VPS Remote│
+└──────────────────┘└──────────────────┘└─────────────────────────────────┘└──────────────────┘└──────────────────┘
+```
+
+---
+
+### 1. 🏹 Engine 1: Public SeaDrop Sniper & Instant Flip Engine (`publicMintEngine.js`)
+* **Pure On-Chain Discovery (0 OpenSea API Dependence)**:
+  * Reads parameters directly from the SeaDrop contract (`0x00005EA00Ac477B1030CE78506496e8C2dE24bf5`) via `getPublicDrop(nftContract)`, `getCreatorPayoutAddress(nftContract)`, and `getAllowedFeeRecipients(nftContract)`.
+  * Even if OpenSea's frontend is down, rate-limited, or Cloudflare-blocked, this engine executes at full line speed directly against the blockchain.
+* **Pre-Signed Raw Byte Buffers (0ms CPU Jitter)**:
+  * At T-10 seconds before drop opening, the bot pre-fetches nonces, calculates exact EIP-1559 gas fees, encodes calldata, and signs transactions into binary `Buffer` objects. At T-0, zero cryptography or derivation is performed; raw bytes are blasted across open HTTP/2 persistent sockets.
+* **FIFO Sequencer Ingress Flood**:
+  * On Robinhood Chain (Arbitrum Orbit L2), gas cannot buy queue priority. The bot broadcasts directly to the Nitro Sequencer write ingress (`https://sequencer.mainnet.chain.robinhood.com`) in AWS us-east-2, bypassing public Cloudflare read-replicas for a ~25ms physical latency lead.
+* **Pre-Signed `NotActive()` Microburst Recovery Ladder**:
+  * If a transaction arrives 1ms before the sequencer clock ticks the drop open and reverts with `NotActive()`, the bot immediately fires pre-signed backup transactions at `0ms`, `120ms`, and `240ms` offsets without re-fetching state.
+* **T-15s Price Watchdog**:
+  * Automatically polls on-chain fee parameters right before drop to catch bait-and-switch scams (e.g. creator switching a free mint to paid 0.1 ETH).
+* **💰 Post-Mint Instant Flip (Seaport 1.6 Auto-Sell)**:
+  * Immediately after successful mint confirmation, parses ERC-721 `Transfer` event logs from transaction receipts to extract newly minted token IDs.
+  * Queries the highest active collection offer on Seaport 1.6 (`0x0000000000000068F116a894984e2DB1123eB395`).
+  * **Configurable Scope (`ALL` vs `SOME`)**: Choose to sell 100% of your minted tokens, or sell a specific quantity/percentage into the top bid while sending the remainder to your cold storage recipient address.
+  * **🛡️ Built-in Slippage Floor (`minPriceEth`)**: If top bid is below your minimum threshold, auto-sell is aborted to protect your asset from lowball bids.
+  * Auto-approves the OpenSea/Seaport Conduit (`0x1E0049783F008A0085193E00003D00cd54003c71`) and executes `fulfillAdvancedOrder()`.
+
+---
+
+### 2. 🔐 Engine 2: OpenSea Allowlist & FCFS Engine (`allowlistMintEngine.js`)
+* **Reverse-Engineered SIWE Authentication**:
+  * Directly completes Sign-In With Ethereum (`auth.opensea.io/auth/nonce` and `/auth/verify`) for all session wallets to acquire cryptographically valid session cookies without browser emulation overhead.
+* **Multi-Key OpenSea API Rotation**:
+  * Automatically cycles across multiple OpenSea developer keys (`OPENSEA_API_KEY`, `OPENSEA_API_KEY_2`, `OPENSEA_API_KEY_3`, etc.) using round-robin rotation, with instant fallback if rate-limited (HTTP 429).
+* **GraphQL Calldata Batching & Field Aliasing**:
+  * Batches proof and calldata retrieval for dozens of wallets into single HTTP requests, cutting round-trip overhead by 80%.
+* **Pre-Flight Balance Verification**:
+  * Checks wallet ETH balances before execution to warn of any underfunded wallets ahead of time.
+* **T-3s Calldata Hammer Loop**:
+  * Continuously hammers OpenSea for encrypted Merkle proofs right before drop time, pre-signs transactions, and bursts upon release.
+
+---
+
+### 3. 🐋 Engine 3: Copy-Mint Engine & Whale Tracker (`copyMintEngine.js` & `trackerEngine.js`)
+* **Real-Time Mempool Pending Stream**:
+  * Subscribes to pending transactions via WebSocket (`eth_subscribe("alchemy_pendingTransactions")` or sequencer push feed).
+* **20+ Contract Mint Classifier**:
+  * Inspects transaction function selectors in real-time, detecting SeaDrop (`mintPublic`, `mintAllowList`), Manifold (`mintExtension`), Zora (`mintWithRewards`), thirdweb (`claim`), and generic ERC-721/1155 mint patterns while instantly discarding ERC-20 transfers and approvals.
+* **Calldata Rewriting & Recipient Hijacking**:
+  * Extracts function arguments, replaces the tracked whale's address with your burner wallet address, and scales mint quantity.
+* **Safety Ceilings & Deduplication**:
+  * Rejects any transaction that requires ETH above your safety threshold (`MAX_MINT_ETH`).
+  * In-memory LRU cache prevents duplicate executions for the same target contract.
+* **Realized PnL Tracker**:
+  * Tracks total gas spent, mint cost, and realized revenue if sold.
+
+---
+
+### 4. 💼 Engine 4: Wallet Tools & Real-Time Gas Tracker (`walletService.js` & `gasTracker.js`)
+* **Real-Time Gas Tracker & Network Traffic Gauge**:
+  * Accessible via `node cli.js --gas` or from the interactive CLI menu.
+  * Fetches live EIP-1559 Base Fees and Priority Tips in Gwei.
+  * Real-time network traffic classification: 🟢 OPTIMAL / 🟡 NORMAL / 🔴 SPIKING.
+  * Estimates exact ETH and USD costs for:
+    * Standard ETH Transfer (21,000 gas)
+    * NFT Mint (200,000 gas)
+    * Seaport Fulfill Order (180,000 gas)
+* **Balance & Nonce Verification**:
+  * Run via `node cli.js --balance` / `-b`. Displays wallet balances, USD values, nonces, and gas conditions in a clean terminal card.
+* **Burner Wallet Generator**:
+  * Run via `node cli.js --generate`. Generates new EVM wallets, formats keys into `wallets.txt`, and supports automatic gas distribution from your Master Wallet.
+
+---
+
+### 5. 📱 Engine 5: 24/7 Mobile Telegram Daemon (`daemon.js` & `telegramBot.js`)
+* **Full Remote Control from Anywhere in the World**:
+  * Tap-to-snipe mobile wizard (`/snipe`), drop scheduling (`/drops`), balance checks (`/balance`), gas reports (`/status`), and asset sweeping (`/sweep`).
+* **Instant Push Notifications**:
+  * Notifies your private Telegram chat and Discord webhook with transaction links, block confirmations, and millisecond execution metrics.
 
 ---
 

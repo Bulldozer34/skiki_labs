@@ -1,6 +1,7 @@
 const os = require('os');
 const { ethers } = require('ethers');
 const MintTracker = require('../../core/mintTracker');
+const { getEthPriceUsd } = require('../../utils/priceFetcher');
 
 /**
  * Format uptime seconds into human readable string.
@@ -33,8 +34,10 @@ async function handleStatus(ctx) {
   const activeSnipes = state.activeSnipes ? state.activeSnipes.size : 0;
 
   const provider = state.provider;
+  const ethPrice = await getEthPriceUsd().catch(() => 2400);
   const feeData = await provider.getFeeData().catch(() => ({ gasPrice: ethers.parseUnits('0.1', 'gwei') }));
   const gasGwei = feeData.gasPrice ? (Number(feeData.gasPrice) / 1e9).toFixed(3) : '0.020';
+  const mintGasCostUsd = ((Number(gasGwei) * 1e-9 * 200000) * ethPrice).toFixed(2);
 
   const analytics = await MintTracker.getAnalytics().catch(() => null);
   const avgLatency = analytics?.avgLatencyMs ? `${analytics.avgLatencyMs}ms` : 'N/A';
@@ -47,7 +50,7 @@ async function handleStatus(ctx) {
     `⏱️ <b>Uptime:</b> ${uptimeStr}`,
     `💼 <b>Active Wallets:</b> ${totalWallets}`,
     `🎯 <b>Active Scheduled Drops:</b> ${activeSnipes}`,
-    `⛽ <b>Network Base Fee:</b> <code>${gasGwei} Gwei</code>`,
+    `⛽ <b>Network Gas:</b> <code>${gasGwei} Gwei (~$${mintGasCostUsd} USD / mint)</code>`,
     `⚡ <b>Avg Block Inclusion:</b> <code>${avgLatency}</code> (Rate: ${successRate})`,
     `🧠 <b>RAM Usage:</b> ${memoryMb} MB`,
     `🔗 <b>Default Route:</b> Sequencer Direct (Robinhood 4663)`,

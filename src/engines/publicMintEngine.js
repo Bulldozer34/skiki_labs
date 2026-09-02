@@ -3,6 +3,7 @@ const { getChainKey } = require('../utils/chains');
 const logger = require('../utils/logger');
 const Notifier = require('../utils/notifier');
 const { forwardNFTs } = require('./nftForwarder');
+const SeaportOfferEngine = require('../services/seaportOfferEngine');
 const MultiRpcBroadcaster = require('./multiRpcBroadcaster');
 const PreflightSimulator = require('./preflightSimulator');
 const connectionManager = require('../services/connectionManager');
@@ -254,6 +255,7 @@ async function executePublicMint(config, state) {
                 p.rawTxObj.value = totalCostPerWalletWei;
                 p.signedTx = await p.wallet.signTransaction(p.rawTxObj);
                 p.rawBuffer = connectionManager.createRawBufferPayload(p.signedTx);
+                await presignBackups(p);
               }
               logger.success(`Transactions updated to new price (${newPriceEth} ETH).`);
             }
@@ -423,6 +425,9 @@ async function executePublicMint(config, state) {
           network: chainConfig?.name || network.name,
           contractAddress: nftContractAddress,
           walletAddress: wallet.address,
+          address: wallet.address,
+          wallet,
+          receipt,
           maskedAddress: `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`,
           mode: 'PUBLIC',
           quantity,
@@ -506,6 +511,9 @@ async function executePublicMint(config, state) {
                   network: chainConfig?.name || network.name,
                   contractAddress: nftContractAddress,
                   walletAddress: wallet.address,
+                  address: wallet.address,
+                  wallet,
+                  receipt: retryWait.receipt,
                   maskedAddress: `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`,
                   mode: 'PUBLIC',
                   quantity,
@@ -630,10 +638,25 @@ async function executePublicMint(config, state) {
   // Print Speed Performance Report
   logger.speedReport(results, totalSessionMs);
 
-  // Auto-forward NFTs if recipient configured
+  // Post-Mint Disposition: Auto-Sell to Top Offer OR Auto-Forward to Recipient
   const successfulResults = results.filter(r => r.status === 'SUCCESS' && r.txHash);
-  if (recipientAddress && successfulResults.length > 0) {
-    await forwardNFTs(successfulResults, wallets, provider, recipientAddress, explorerUrl);
+  if (successfulResults.length > 0) {
+    if (config.postMintConfig?.action === 'TOP_OFFER') {
+      await SeaportOfferEngine.executeOfferFulfillment({
+        results: successfulResults,
+        wallets,
+        provider,
+        nftContractAddress,
+        collectionSlug: config.collectionSlug,
+        postMintConfig: config.postMintConfig,
+        explorerUrl
+      });
+    } else if (recipientAddress || config.postMintConfig?.action === 'RECIPIENT') {
+      const targetRecipient = recipientAddress || config.postMintConfig?.recipientAddress;
+      if (targetRecipient) {
+        await forwardNFTs(successfulResults, wallets, provider, targetRecipient, explorerUrl);
+      }
+    }
   }
 
   // Non-blocking async history recording with timestamps & session duration

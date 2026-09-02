@@ -30,6 +30,7 @@ async function handleBalance(ctx) {
     const ethPrice = await getEthPriceUsd().catch(() => null);
     const feeData = await provider.getFeeData().catch(() => ({ gasPrice: ethers.parseUnits('0.1', 'gwei') }));
     const gasGwei = feeData.gasPrice ? (Number(feeData.gasPrice) / 1e9).toFixed(3) : '0.020';
+    const mintCostUsd = ethPrice ? ((Number(gasGwei) * 1e-9 * 200000) * ethPrice).toFixed(2) : '0.20';
 
     const balanceItems = await WalletService.checkDetailedBalances(wallets, provider, ethPrice || 0);
 
@@ -65,7 +66,7 @@ async function handleBalance(ctx) {
       `━━━━━━━━━━━━━━━━━━━━`,
       `💼 <b>Wallets Checked:</b> ${wallets.length}`,
       `💵 ${summaryHeader}`,
-      `⛽ <b>Live Gas:</b> <code>${gasGwei} Gwei</code> (Robinhood L2)`,
+      `⛽ <b>Live Gas:</b> <code>${gasGwei} Gwei (~$${mintCostUsd} USD / mint)</code>`,
       ...(lowCount > 0 ? [`⚠️ <b>Low/Empty Wallets:</b> ${lowCount}`] : []),
       `━━━━━━━━━━━━━━━━━━━━`,
       ...rows,

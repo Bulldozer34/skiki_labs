@@ -13,8 +13,95 @@ const ERC1155_ABI = [
 ];
 
 /**
- * Forward minted NFTs to recipient address
- * @param {Array<{receipt: ethers.TransactionReceipt, wallet: ethers.Wallet}>} results 
+ * Forward minted NFTs from a single receipt (used by copy-mint and single-wallet tasks)
+ * @param {object} params
+ * @param {ethers.TransactionReceipt} params.receipt
+ * @param {ethers.Wallet|ethers.Signer} params.signer
+ * @param {string} params.recipientAddress
+ * @param {ethers.Provider} [params.provider]
+ * @param {string} [params.explorerUrl]
+ */
+async function forwardNftsFromReceipt({ receipt, signer, recipientAddress, provider, explorerUrl = '' }) {
+  if (!recipientAddress || !recipientAddress.startsWith('0x') || !receipt || !receipt.logs) return [];
+
+  const erc721Iface = new Interface(ERC721_ABI);
+  const erc1155Iface = new Interface(ERC1155_ABI);
+  const signerAddress = (signer.address || await signer.getAddress()).toLowerCase();
+  const forwardedTokens = [];
+
+  for (const log of receipt.logs) {
+    // Check ERC-721 Transfer
+    try {
+      const parsed721 = erc721Iface.parseLog(log);
+      if (parsed721 && parsed721.name === 'Transfer') {
+        const tokenId = parsed721.args.tokenId.toString();
+        const toAddress = (parsed721.args.to || '').toLowerCase();
+
+        if (toAddress === signerAddress) {
+          logger.info(`Forwarding ERC-721 Token #${tokenId} from ${signerAddress.slice(0, 6)}... to ${recipientAddress.slice(0, 6)}...`);
+          try {
+            const nftContract = new Contract(log.address, ERC721_ABI, signer);
+            const tx = await nftContract.safeTransferFrom(signerAddress, recipientAddress, tokenId, { gasLimit: 120000 });
+            logger.speed(`Forward Tx Sent: ${tx.hash}`);
+            const forwardReceipt = await tx.wait(1, 30000);
+            logger.success(`Token #${tokenId} forwarded! (Block: ${forwardReceipt.blockNumber})`);
+
+            forwardedTokens.push({ standard: 'ERC721', tokenId, contractAddress: log.address, txHash: tx.hash });
+
+            await Notifier.sendForwardAlert({
+              tokenId,
+              fromAddress: signerAddress,
+              toAddress: recipientAddress,
+              txHash: tx.hash,
+              explorerUrl
+            });
+          } catch (txErr) {
+            logger.warn(`[NFT Forwarder] Failed to forward ERC-721 Token #${tokenId}: ${txErr.message}`);
+          }
+        }
+      }
+    } catch (e) {}
+
+    // Check ERC-1155 TransferSingle
+    try {
+      const parsed1155 = erc1155Iface.parseLog(log);
+      if (parsed1155 && parsed1155.name === 'TransferSingle') {
+        const tokenId = parsed1155.args.id.toString();
+        const amount = parsed1155.args.value;
+        const toAddress = (parsed1155.args.to || '').toLowerCase();
+
+        if (toAddress === signerAddress) {
+          logger.info(`Forwarding ERC-1155 Token #${tokenId} (qty: ${amount}) to ${recipientAddress.slice(0, 6)}...`);
+          try {
+            const nftContract = new Contract(log.address, ERC1155_ABI, signer);
+            const tx = await nftContract.safeTransferFrom(signerAddress, recipientAddress, tokenId, amount, '0x', { gasLimit: 120000 });
+            logger.speed(`Forward Tx Sent: ${tx.hash}`);
+            const forwardReceipt = await tx.wait(1, 30000);
+            logger.success(`ERC-1155 Token #${tokenId} forwarded! (Block: ${forwardReceipt.blockNumber})`);
+
+            forwardedTokens.push({ standard: 'ERC1155', tokenId, amount, contractAddress: log.address, txHash: tx.hash });
+
+            await Notifier.sendForwardAlert({
+              tokenId,
+              fromAddress: signerAddress,
+              toAddress: recipientAddress,
+              txHash: tx.hash,
+              explorerUrl
+            });
+          } catch (txErr) {
+            logger.warn(`[NFT Forwarder] Failed to forward ERC-1155 Token #${tokenId}: ${txErr.message}`);
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  return forwardedTokens;
+}
+
+/**
+ * Forward minted NFTs to recipient address across batch mint results
+ * @param {Array<object>} results 
  * @param {ethers.Wallet[]} wallets 
  * @param {ethers.Provider} provider 
  * @param {string} recipientAddress 
@@ -23,90 +110,26 @@ const ERC1155_ABI = [
 async function forwardNFTs(results, wallets, provider, recipientAddress, explorerUrl = '') {
   if (!recipientAddress || !recipientAddress.startsWith('0x')) return;
 
-  const erc721Iface = new Interface(ERC721_ABI);
-  const erc1155Iface = new Interface(ERC1155_ABI);
-  
   logger.info(`Starting automatic NFT forwarding to: ${recipientAddress}`);
 
   const forwardPromises = results.map(async (result) => {
     try {
-      const { receipt, address } = result;
+      const receipt = result.receipt || (result.txHash && provider ? await provider.getTransactionReceipt(result.txHash).catch(() => null) : null);
       if (!receipt || !receipt.logs) return;
 
-      const wallet = wallets.find(w => w.address.toLowerCase() === (address || result.address || '').toLowerCase());
+      const targetAddress = (result.address || result.walletAddress || '').toLowerCase();
+      const wallet = wallets.find(w => w.address.toLowerCase() === targetAddress) || result.wallet;
       if (!wallet) return;
 
       const connectedWallet = wallet.connect ? wallet.connect(provider) : wallet;
 
-      for (const log of receipt.logs) {
-        // Try ERC-721 Transfer event
-        try {
-          const parsed721 = erc721Iface.parseLog(log);
-          if (parsed721 && parsed721.name === 'Transfer') {
-            const tokenId = parsed721.args.tokenId.toString();
-            const nftContractAddress = log.address; // The actual NFT token contract
-            
-            // Only forward if the token was transferred to our wallet
-            if (parsed721.args.to.toLowerCase() === wallet.address.toLowerCase()) {
-              logger.info(`Forwarding ERC-721 Token #${tokenId} from ${wallet.address.slice(0, 6)}... to ${recipientAddress.slice(0, 6)}...`);
-              try {
-                const nftContract = new Contract(nftContractAddress, ERC721_ABI, connectedWallet);
-                const tx = await nftContract.safeTransferFrom(wallet.address, recipientAddress, tokenId);
-                logger.speed(`Forward Tx Sent: ${tx.hash}`);
-                const forwardReceipt = await tx.wait(1, 45000);
-                logger.success(`Token #${tokenId} forwarded! (Block: ${forwardReceipt.blockNumber})`);
-
-                // Trigger webhook notification
-                await Notifier.sendForwardAlert({
-                  tokenId,
-                  fromAddress: wallet.address,
-                  toAddress: recipientAddress,
-                  txHash: tx.hash,
-                  explorerUrl
-                });
-              } catch (txErr) {
-                logger.warn(`[NFT Forwarder] Failed to forward ERC-721 Token #${tokenId} (${wallet.address.slice(0, 6)}...): ${txErr.message}`);
-              }
-            }
-          }
-        } catch (e) {
-          // Not ERC-721 or log parse error
-        }
-
-        // Try ERC-1155 TransferSingle event
-        try {
-          const parsed1155 = erc1155Iface.parseLog(log);
-          if (parsed1155 && parsed1155.name === 'TransferSingle') {
-            const tokenId = parsed1155.args.id.toString();
-            const amount = parsed1155.args.value;
-            const nftContractAddress = log.address;
-
-            if (parsed1155.args.to.toLowerCase() === wallet.address.toLowerCase()) {
-              logger.info(`Forwarding ERC-1155 Token #${tokenId} (qty: ${amount}) to ${recipientAddress.slice(0, 6)}...`);
-              try {
-                const nftContract = new Contract(nftContractAddress, ERC1155_ABI, connectedWallet);
-                const tx = await nftContract.safeTransferFrom(wallet.address, recipientAddress, tokenId, amount, '0x');
-                logger.speed(`Forward Tx Sent: ${tx.hash}`);
-                const forwardReceipt = await tx.wait(1, 45000);
-                logger.success(`ERC-1155 Token #${tokenId} forwarded! (Block: ${forwardReceipt.blockNumber})`);
-
-                // Trigger webhook notification
-                await Notifier.sendForwardAlert({
-                  tokenId,
-                  fromAddress: wallet.address,
-                  toAddress: recipientAddress,
-                  txHash: tx.hash,
-                  explorerUrl
-                });
-              } catch (txErr) {
-                logger.warn(`[NFT Forwarder] Failed to forward ERC-1155 Token #${tokenId} (${wallet.address.slice(0, 6)}...): ${txErr.message}`);
-              }
-            }
-          }
-        } catch (e) {
-          // Not ERC-1155 or log parse error
-        }
-      }
+      await forwardNftsFromReceipt({
+        receipt,
+        signer: connectedWallet,
+        recipientAddress,
+        provider,
+        explorerUrl
+      });
     } catch (error) {
       logger.error(`Error forwarding NFT for wallet: ${error.message}`);
     }
@@ -116,4 +139,4 @@ async function forwardNFTs(results, wallets, provider, recipientAddress, explore
   logger.success('NFT forwarding phase completed.');
 }
 
-module.exports = { forwardNFTs };
+module.exports = { forwardNFTs, forwardNftsFromReceipt };

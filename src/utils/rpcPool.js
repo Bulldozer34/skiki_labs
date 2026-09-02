@@ -56,10 +56,13 @@ function labelFor(url) {
  * @param {string} [rpcUrl] The primary RPC the user configured (Alchemy or default)
  * @returns {{endpoints: RpcEndpoint[], urls: string[], readUrls: string[], broadcastUrls: string[], sequencerUrl: string|null, feedUrl: string|null}}
  */
-function buildEndpoints(chainConfig = {}, rpcUrl = null) {
+function buildEndpoints(chainConfig = {}, rpcUrl = null, options = {}) {
   /** @type {RpcEndpoint[]} */
   const endpoints = [];
   const seen = new Set();
+  const enableQuickNode = options.enableQuickNode !== undefined
+    ? options.enableQuickNode
+    : (process.env.USE_QUICKNODE_ONLY_FOR_VITAL_MINTS !== 'true');
 
   const add = (url, { broadcastOnly = false, label = null } = {}) => {
     if (!url) return;
@@ -81,8 +84,10 @@ function buildEndpoints(chainConfig = {}, rpcUrl = null) {
   add(rpcUrl);
   add(chainConfig.defaultRpc);
 
-  // 3. Operator-supplied extras.
-  add(process.env.QUICKNODE_URL);
+  // 3. Operator-supplied extras (QuickNode can be reserved for vital mints)
+  if (enableQuickNode) {
+    add(process.env.QUICKNODE_URL, { label: 'quicknode-vip' });
+  }
   add(process.env.SECONDARY_RPC_URL);
 
   // 4. Ethereum mainnet keeps its extra public fallbacks — there, unlike on a
