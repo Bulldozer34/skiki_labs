@@ -82,6 +82,83 @@ class TelegramClient {
   }
 
   /**
+   * Send a document/file (e.g. SVG card or JSON export) to a chat.
+   * @param {string|number} chatId
+   * @param {Buffer|string} fileContent File buffer or string
+   * @param {string} filename File name (e.g. "pnl_card.svg")
+   * @param {string} [caption=''] Optional caption
+   * @param {object} [options={}]
+   * @returns {Promise<object>} Telegram Message object
+   */
+  async sendDocument(chatId, fileContent, filename, caption = '', options = {}) {
+    try {
+      const formData = new FormData();
+      formData.append('chat_id', String(chatId));
+      const blob = new Blob([fileContent]);
+      formData.append('document', blob, filename);
+      if (caption) {
+        formData.append('caption', caption);
+        formData.append('parse_mode', options.parse_mode || 'HTML');
+      }
+      if (options.reply_markup) {
+        formData.append('reply_markup', typeof options.reply_markup === 'string' ? options.reply_markup : JSON.stringify(options.reply_markup));
+      }
+      const res = await this.axiosInstance.post('/sendDocument', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return res.data?.result;
+    } catch (err) {
+      const errDetail = err.response?.data?.description || err.message;
+      logger.error(`[TelegramClient] sendDocument failed: ${errDetail}`);
+      throw new Error(errDetail);
+    }
+  }
+
+  /**
+   * Send a photo to a chat (via URL or buffer).
+   * @param {string|number} chatId
+   * @param {string|Buffer} photo URL string or image Buffer
+   * @param {string} [caption=''] Optional caption
+   * @param {object} [options={}]
+   * @returns {Promise<object>} Telegram Message object
+   */
+  async sendPhoto(chatId, photo, caption = '', options = {}) {
+    try {
+      if (typeof photo === 'string') {
+        const payload = {
+          chat_id: chatId,
+          photo,
+          caption,
+          parse_mode: options.parse_mode || 'HTML',
+          ...options
+        };
+        const res = await this.axiosInstance.post('/sendPhoto', payload);
+        return res.data?.result;
+      } else {
+        const formData = new FormData();
+        formData.append('chat_id', String(chatId));
+        const blob = new Blob([photo]);
+        formData.append('photo', blob, 'photo.png');
+        if (caption) {
+          formData.append('caption', caption);
+          formData.append('parse_mode', options.parse_mode || 'HTML');
+        }
+        if (options.reply_markup) {
+          formData.append('reply_markup', typeof options.reply_markup === 'string' ? options.reply_markup : JSON.stringify(options.reply_markup));
+        }
+        const res = await this.axiosInstance.post('/sendPhoto', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return res.data?.result;
+      }
+    } catch (err) {
+      const errDetail = err.response?.data?.description || err.message;
+      logger.error(`[TelegramClient] sendPhoto failed: ${errDetail}`);
+      throw new Error(errDetail);
+    }
+  }
+
+  /**
    * Answer a callback query from an inline button tap.
    * @param {string} callbackQueryId
    * @param {object} [options={}]

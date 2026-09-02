@@ -225,6 +225,18 @@ class CopyMintPnLService {
   getRecords() {
     return [...this.records];
   }
+
+  reset() {
+    this.records = [];
+    this._save();
+    logger.info('[CopyMintPnL] Records wiped to clean state (0 drops, 0 mints)');
+    return true;
+  }
+
+  reload() {
+    this.records = this._load();
+    return this.records;
+  }
 }
 
 module.exports = new CopyMintPnLService();

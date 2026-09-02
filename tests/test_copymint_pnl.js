@@ -25,6 +25,9 @@ async function asyncTest(name, fn) {
 
 console.log('\n🧪 Running Copy-Mint PnL & Card Generator Test Suite...\n');
 
+// Preserve original records so tests never pollute real portfolio data
+const originalRecords = [...copyMintPnL.records];
+
 (async () => {
   // 1. Record a copy-mint
   await asyncTest('CopyMintPnL: Record copy-mint event and calculate costs', async () => {
@@ -99,6 +102,10 @@ console.log('\n🧪 Running Copy-Mint PnL & Card Generator Test Suite...\n');
     assert.ok(msg.includes('Total Minted:'));
     assert.ok(msg.includes('Total Sold:'));
   });
+
+  // Restore clean original records
+  copyMintPnL.records = originalRecords;
+  copyMintPnL._save();
 
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(`📊 Test Summary: ${passedTests} Passed, ${failedTests} Failed.`);

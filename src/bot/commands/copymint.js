@@ -280,6 +280,19 @@ async function handleCopyMintCallback(client, chatId, messageId, data, state = {
     return await handleCopyMintPnL(client, chatId, messageId);
   }
 
+  // Generate & Download HD Card
+  if (data === 'cm_pnl_card') {
+    await client.answerCallbackQuery(cb.id, { text: 'Rendering HD PnL Card...' }).catch(() => {});
+    return await handleCopyMintPnL(client, chatId, null, true);
+  }
+
+  // Reset PnL
+  if (data === 'cm_pnl_reset_confirm') {
+    copyMintPnL.reset();
+    await client.answerCallbackQuery(cb.id, { text: '🗑️ PnL records wiped clean!' }).catch(() => {});
+    return await handleCopyMintPnL(client, chatId, messageId);
+  }
+
   // Stats view
   if (data === 'cm_stats') {
     const trackerStats = state.trackerEngine ? state.trackerEngine.getStats() : {};
@@ -308,7 +321,7 @@ async function handleCopyMintCallback(client, chatId, messageId, data, state = {
 /**
  * Render Copy-Mint PnL & Performance Report
  */
-async function handleCopyMintPnL(client, chatId, messageId = null) {
+async function handleCopyMintPnL(client, chatId, messageId = null, sendCardFile = false) {
   const summary = await copyMintPnL.getSummary();
   PnLCardGenerator.saveSvgCardToFile(summary);
   const text = PnLCardGenerator.formatTelegramMessage(summary);
@@ -316,11 +329,24 @@ async function handleCopyMintPnL(client, chatId, messageId = null) {
   const reply_markup = {
     inline_keyboard: [
       [
-        { text: '🔄 Refresh PnL', callback_data: 'cm_pnl' },
-        { text: '◀️ Back to Copy-Mint Menu', callback_data: 'menu_copymint' }
+        { text: '🖼️ Download HD Trading Card (SVG)', callback_data: 'cm_pnl_card' },
+        { text: '🔄 Refresh', callback_data: 'cm_pnl' }
+      ],
+      [
+        { text: '🗑️ Reset PnL to 0', callback_data: 'cm_pnl_reset_confirm' },
+        { text: '◀️ Back to Menu', callback_data: 'menu_copymint' }
       ]
     ]
   };
+
+  if (sendCardFile) {
+    const svgCode = PnLCardGenerator.generateSvgCard(summary);
+    try {
+      return await client.sendDocument(chatId, Buffer.from(svgCode, 'utf-8'), 'pnl_trading_card.svg', text, { reply_markup });
+    } catch (err) {
+      // Fallback to text message if upload fails
+    }
+  }
 
   if (messageId) {
     return await client.editMessageText(chatId, messageId, text, { parse_mode: 'HTML', reply_markup }).catch(() => {});

@@ -21,6 +21,7 @@ const {
   handleSetRecipient
 } = require('./commands/copymint');
 const trackedWalletService = require('../services/trackedWalletService');
+const copyMintPnL = require('../services/copyMintPnL');
 const logger = require('../utils/logger');
 
 class TelegramBot {
@@ -207,8 +208,18 @@ class TelegramBot {
           await handleStats(ctx);
           break;
         case '/copypnl':
-          await handleCopyMintPnL(this.client, msg.chat.id);
+        case '/copymintpnl':
+        case '/pnlcard': {
+          const wantsCard = (text || '').toLowerCase().includes('card') || command === '/pnlcard';
+          await handleCopyMintPnL(this.client, msg.chat.id, null, wantsCard);
           break;
+        }
+        case '/resetpnl':
+        case '/clearpnl': {
+          copyMintPnL.reset();
+          await this.client.sendMessage(msg.chat.id, '🗑️ <b>Copy-Mint PnL database wiped clean!</b> All mock records removed. Starting fresh with 0 drops.', { parse_mode: 'HTML' });
+          break;
+        }
         case '/export':
           await handleExport(ctx);
           break;
