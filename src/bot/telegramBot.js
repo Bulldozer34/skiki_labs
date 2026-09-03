@@ -25,6 +25,7 @@ const {
 const { handleGas } = require('./commands/gas');
 const { handleLatency } = require('./commands/latency');
 const { handleHelp, handleHelpCallback } = require('./commands/help');
+const { handleRecipient, handleRecipientCallback } = require('./commands/recipient');
 const { handleTrackMint, handleTrackedMints, handleUntrackMint } = require('./commands/trackmint');
 const dropTrackerService = require('../services/dropTrackerService');
 const trackedWalletService = require('../services/trackedWalletService');
@@ -307,6 +308,9 @@ class TelegramBot {
         case '/paidwallets':
           await handleSetPaidWallets(this.client, msg.chat.id, text, this.state);
           break;
+        case '/recipient':
+          await handleRecipient({ client: this.client, chatId: msg.chat.id, state: this.state });
+          break;
         case '/setrecipient':
           await handleSetRecipient(this.client, msg.chat.id, text, this.state);
           break;
@@ -430,6 +434,11 @@ class TelegramBot {
       else if (data.startsWith('drop_cancel:')) {
         const dropId = data.replace('drop_cancel:', '');
         await handleDropCancel(ctx, dropId);
+      }
+      // ─── Recipient ──────────────────────────────────────────
+      else if (data.startsWith('recipient_')) {
+        const action = data.replace('recipient_', '');
+        await handleRecipientCallback({ client: this.client, callbackQuery: cb, state: this.state }, action);
       }
       // ─── Fund ───────────────────────────────────────────────
       else if (data.startsWith('fund_batch:') || data.startsWith('cmd_fund:')) {

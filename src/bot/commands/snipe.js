@@ -322,22 +322,27 @@ async function handleSnipeCallback(ctx, action, param) {
     return await client.editMessageText(chatId, callbackQuery.message.message_id, text, { parse_mode: 'HTML', reply_markup });
   }
 
-  // Step 5: Select Timing / Scheduling
+  // Step 5: Post-Mint Action
   if (action === 'qty') {
     wizard.data.quantity = parseInt(param, 10) || 1;
-    wizard.step = 'SELECT_TIMING';
+    wizard.step = 'SELECT_POSTMINT';
     await client.answerCallbackQuery(callbackQuery.id);
+
+    const configuredRecipient = state.recipientAddress || process.env.RECIPIENT_ADDRESS;
+    const recipientLabel = configuredRecipient
+      ? `📬 Transfer to ${configuredRecipient.slice(0, 6)}...${configuredRecipient.slice(-4)}`
+      : '📬 Transfer to Recipient Wallet';
 
     const reply_markup = {
       inline_keyboard: [
         [
-          { text: '⚡ Fire Immediately', callback_data: 'snipe_timing:IMMEDIATE' }
+          { text: '📦 Keep in Minting Wallets (Default)', callback_data: 'snipe_postmint:KEEP' }
         ],
         [
-          { text: '🎯 Auto-Sync On-Chain Drop Time', callback_data: 'snipe_timing:AUTO_SYNC' }
+          { text: recipientLabel, callback_data: 'snipe_postmint:RECIPIENT' }
         ],
         [
-          { text: '⏰ Enter Custom Time', callback_data: 'snipe_timing:CUSTOM' }
+          { text: '💰 Instant Flip (Seaport 1.6 Top Offer)', callback_data: 'snipe_postmint:TOP_OFFER' }
         ],
         [
           { text: '❌ Cancel', callback_data: 'snipe_cancel' }
@@ -346,16 +351,51 @@ async function handleSnipeCallback(ctx, action, param) {
     };
 
     const text = [
-      `<b>🎯 Step 5/5 — Scheduling & Timing</b>`,
+      `<b>🎯 Step 5/6 — Post-Mint Disposition</b>`,
       `━━━━━━━━━━━━━━━━━━━━`,
       `Target: <code>${wizard.data.target}</code>`,
       `Wallets: <b>${wizard.data.walletSelectionLabel}</b>`,
       `Quantity: <b>${wizard.data.quantity} per wallet</b>`,
       ``,
-      `How would you like to schedule this drop?`
+      `What should happen immediately after minting succeeds?`
     ].join('\n');
 
     return await client.editMessageText(chatId, callbackQuery.message.message_id, text, { parse_mode: 'HTML', reply_markup });
+  }
+
+  // Handle Post-Mint Choice
+  if (action === 'postmint') {
+    if (param === 'KEEP') {
+      wizard.data.postMintConfig = { action: 'NONE' };
+      wizard.data.postMintLabel = '📦 Keep in Wallets';
+    } else if (param === 'TOP_OFFER') {
+      wizard.data.postMintConfig = { action: 'TOP_OFFER', scope: 'ALL', minPriceEth: '0.0' };
+      wizard.data.postMintLabel = '💰 Instant Flip (Seaport Top Offer)';
+    } else if (param === 'RECIPIENT') {
+      const defaultRecipient = state.recipientAddress || process.env.RECIPIENT_ADDRESS;
+      if (defaultRecipient) {
+        wizard.data.postMintConfig = { action: 'RECIPIENT', recipientAddress: defaultRecipient };
+        wizard.data.recipientAddress = defaultRecipient;
+        wizard.data.postMintLabel = `📬 Forward to ${defaultRecipient.slice(0, 6)}...${defaultRecipient.slice(-4)}`;
+      } else {
+        wizard.step = 'AWAIT_RECIPIENT';
+        await client.answerCallbackQuery(callbackQuery.id);
+        return await client.editMessageText(
+          chatId,
+          callbackQuery.message.message_id,
+          [
+            `<b>📬 Enter Recipient Wallet Address</b>`,
+            `━━━━━━━━━━━━━━━━━━━━`,
+            `Please reply with the EVM <code>0x...</code> address where all minted NFTs should be forwarded:`
+          ].join('\n'),
+          { parse_mode: 'HTML' }
+        );
+      }
+    }
+
+    wizard.step = 'SELECT_TIMING';
+    await client.answerCallbackQuery(callbackQuery.id);
+    return await showTimingSelection(ctx, wizard, callbackQuery.message.message_id);
   }
 
   // Handle Timing choice
@@ -420,6 +460,46 @@ async function handleSnipeCallback(ctx, action, param) {
 }
 
 /**
+ * Show Step 6: Scheduling & Timing Selection
+ */
+async function showTimingSelection(ctx, wizard, messageId) {
+  const { client, chatId } = ctx;
+  const reply_markup = {
+    inline_keyboard: [
+      [
+        { text: '⚡ Fire Immediately', callback_data: 'snipe_timing:IMMEDIATE' }
+      ],
+      [
+        { text: '🎯 Auto-Sync On-Chain Drop Time', callback_data: 'snipe_timing:AUTO_SYNC' }
+      ],
+      [
+        { text: '⏰ Enter Custom Time', callback_data: 'snipe_timing:CUSTOM' }
+      ],
+      [
+        { text: '❌ Cancel', callback_data: 'snipe_cancel' }
+      ]
+    ]
+  };
+
+  const text = [
+    `<b>🎯 Step 6/6 — Scheduling & Timing</b>`,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    `Target: <code>${wizard.data.target}</code>`,
+    `Wallets: <b>${wizard.data.walletSelectionLabel}</b>`,
+    `Quantity: <b>${wizard.data.quantity} per wallet</b>`,
+    `Post-Mint: <b>${wizard.data.postMintLabel || '📦 Keep in Wallets'}</b>`,
+    ``,
+    `How would you like to schedule this drop?`
+  ].join('\n');
+
+  if (messageId) {
+    return await client.editMessageText(chatId, messageId, text, { parse_mode: 'HTML', reply_markup });
+  } else {
+    return await client.sendMessage(chatId, text, { parse_mode: 'HTML', reply_markup });
+  }
+}
+
+/**
  * Show Review & Confirm Card
  */
 async function showConfirmationCard(ctx, wizard, messageId) {
@@ -458,6 +538,7 @@ async function showConfirmationCard(ctx, wizard, messageId) {
     `💼 <b>Wallets:</b> ${walletLabel}`,
     `🔢 <b>Quantity per Wallet:</b> ${wizard.data.quantity}`,
     `📦 <b>Total NFTs:</b> ${selectedWallets.length * wizard.data.quantity}`,
+    `🎁 <b>Post-Mint:</b> ${wizard.data.postMintLabel || '📦 Keep in Wallets'}`,
     `⏰ <b>Scheduled Time:</b> ${timeStr}`,
     `⚡ <b>Gas Profile:</b> Auto-Optimized`,
     `━━━━━━━━━━━━━━━━━━━━`,
@@ -578,6 +659,7 @@ async function scheduleDropInBackground(ctx, data, messageId) {
     quantity: data.quantity,
     startTime: data.startTime,
     walletsCount: wallets.length,
+    postMintLabel: data.postMintLabel || '📦 Keep in Wallets',
     createdAt: Date.now()
   };
   state.activeSnipes.set(dropId, dropJob);
@@ -597,6 +679,7 @@ async function scheduleDropInBackground(ctx, data, messageId) {
       `🔗 <b>Chain:</b> ${chainKey} | <b>Mode:</b> ${data.mode}`,
       `💼 <b>Wallets:</b> ${data.walletSelectionLabel || `${wallets.length} Wallets`}`,
       `🔢 <b>Quantity:</b> ${data.quantity} NFT(s) per wallet`,
+      `🎁 <b>Post-Mint:</b> ${data.postMintLabel || '📦 Keep in Wallets'}`,
       `━━━━━━━━━━━━━━━━━━━━`,
       `<i>The daemon will monitor drop clock and execute at T-0. Send /drops to view or cancel.</i>`
     ].join('\n'),
@@ -650,6 +733,7 @@ async function scheduleDropInBackground(ctx, data, messageId) {
             `🔗 <b>Chain:</b> ${chainKey} | <b>Mode:</b> ${data.mode}`,
             `💼 <b>Wallets:</b> ${wallets.length} burner wallets`,
             `🔢 <b>Quantity:</b> ${data.quantity} NFT(s) per wallet`,
+            `🎁 <b>Post-Mint:</b> ${data.postMintLabel || '📦 Keep in Wallets'}`,
             `━━━━━━━━━━━━━━━━━━━━`,
             `<i>Blasting transactions to mempool across redundant RPCs...</i>`
           ].join('\n'),
@@ -670,7 +754,8 @@ async function scheduleDropInBackground(ctx, data, messageId) {
         quantity: data.quantity,
         gasSettings,
         startTime: data.startTime,
-        recipientAddress: process.env.RECIPIENT_ADDRESS || null,
+        postMintConfig: data.postMintConfig || null,
+        recipientAddress: data.recipientAddress || state.recipientAddress || process.env.RECIPIENT_ADDRESS || null,
         onFiring
       });
 
@@ -678,30 +763,24 @@ async function scheduleDropInBackground(ctx, data, messageId) {
       state.activeSnipes.delete(dropId);
 
       const successCount = results.filter(r => r.status === 'SUCCESS').length;
-      const failCount = results.length - successCount;
-      const totalGasSpentEth = results.reduce((acc, r) => acc + (parseFloat(r.gasSpentEth) || 0), 0);
-      const ethPrice = await getEthPriceUsd().catch(() => 2500) || 2500;
-      const totalGasSpentUsd = (totalGasSpentEth * ethPrice).toFixed(2);
+      const failCount = results.filter(r => r.status !== 'SUCCESS').length;
 
       const lines = [
-        `<b>🎉 Scheduled Mint Execution Completed!</b>`,
+        `🏁 <b>SCHEDULED DROP COMPLETED!</b>`,
         `━━━━━━━━━━━━━━━━━━━━`,
-        `🎯 <b>Target:</b> <code>${data.target}</code> (${chainKey})`,
-        `📊 <b>Status:</b> ${successCount === wallets.length ? '🟢 100% SUCCESS' : (successCount > 0 ? '🟡 PARTIAL SUCCESS' : '🔴 FAILED')}`,
-        `✅ <b>Mints Completed:</b> ${successCount}/${wallets.length} wallets`,
-        ...(totalGasSpentEth > 0 ? [`⛽ <b>Gas Spent:</b> <code>${totalGasSpentEth.toFixed(5)} ETH (~$${totalGasSpentUsd} USD)</code>`] : []),
-        ...(failCount > 0 ? [`❌ <b>Failed:</b> ${failCount}`] : []),
+        `🎯 <b>Target:</b> ${data.collectionName ? `<b>${data.collectionName}</b>` : `<code>${data.target}</code>`}`,
+        `📄 <b>Contract:</b> <code>${nftContractAddress || data.target}</code>`,
+        `🔗 <b>Chain:</b> ${chainKey} | <b>Mode:</b> ${data.mode}`,
         `━━━━━━━━━━━━━━━━━━━━`,
-        `<b>Transaction Details:</b>`
+        `📊 <b>Results:</b> ✅ <b>${successCount} Succeeded</b> | ❌ <b>${failCount} Failed</b>`
       ];
 
       results.forEach((r, idx) => {
-        const masked = `${(r.walletAddress || r.address || '').slice(0, 6)}...${(r.walletAddress || r.address || '').slice(-4)}`;
+        const shortAddr = `${r.wallet.address.slice(0, 6)}...${r.wallet.address.slice(-4)}`;
         if (r.status === 'SUCCESS') {
-          const txShort = r.txHash ? `${r.txHash.slice(0, 10)}...` : 'OK';
-          lines.push(`• #${idx + 1} <code>${masked}</code>: ✅ Block #${r.blockNumber} (<code>${txShort}</code>)`);
+          lines.push(`• #${idx + 1} <code>${shortAddr}</code>: 🟢 <code>${r.txHash ? `${r.txHash.slice(0, 10)}...` : 'SUCCESS'}</code> (${r.mintDurationMs || 0}ms)`);
         } else {
-          lines.push(`• #${idx + 1} <code>${masked}</code>: ❌ ${r.details || 'Reverted'}`);
+          lines.push(`• #${idx + 1} <code>${shortAddr}</code>: 🔴 ${r.error || 'Failed'}`);
         }
       });
 
@@ -729,6 +808,20 @@ function handlePendingInput(ctx) {
 
   if (wizard.step === 'AWAIT_TARGET') {
     startWizardWithTarget(ctx, text);
+    return true;
+  }
+
+  if (wizard.step === 'AWAIT_RECIPIENT') {
+    if (!ethers.isAddress(text)) {
+      ctx.client.sendMessage(ctx.chatId, `❌ <b>Invalid EVM Address:</b> <code>${text}</code>\n\nPlease enter a valid 20-byte address (e.g. <code>0x...</code>):`, { parse_mode: 'HTML' });
+      return true;
+    }
+    const checksummed = ethers.getAddress(text);
+    wizard.data.postMintConfig = { action: 'RECIPIENT', recipientAddress: checksummed };
+    wizard.data.recipientAddress = checksummed;
+    wizard.data.postMintLabel = `📬 Forward to ${checksummed.slice(0, 6)}...${checksummed.slice(-4)}`;
+    wizard.step = 'SELECT_TIMING';
+    showTimingSelection(ctx, wizard, null);
     return true;
   }
 

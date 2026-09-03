@@ -59,6 +59,7 @@ async function handleDrops(ctx) {
     if (contractLine) lines.push(contractLine);
     lines.push(`• <b>Chain:</b> ${drop.chainKey} | <b>Mode:</b> ${drop.mode}`);
     lines.push(`• <b>Quantity:</b> ${drop.quantity} NFT(s) per wallet`);
+    lines.push(`• <b>Post-Mint:</b> ${drop.postMintLabel || '📦 Keep in Wallets'}`);
     lines.push(`• <b>Starts:</b> ${timeStr}`);
     lines.push(`• <b>Status:</b> ⏳ <i>Armed & Monitoring Drop Window</i>`);
     lines.push(``);
