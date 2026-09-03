@@ -24,6 +24,7 @@ const {
 } = require('./commands/copymint');
 const { handleGas } = require('./commands/gas');
 const { handleLatency } = require('./commands/latency');
+const { handleHelp, handleHelpCallback } = require('./commands/help');
 const { handleTrackMint, handleTrackedMints, handleUntrackMint } = require('./commands/trackmint');
 const dropTrackerService = require('../services/dropTrackerService');
 const trackedWalletService = require('../services/trackedWalletService');
@@ -196,9 +197,11 @@ class TelegramBot {
 
       switch (command) {
         case '/start':
-        case '/help':
         case '/menu':
           await this.sendMainMenu(msg.chat.id);
+          break;
+        case '/help':
+          await handleHelp(ctx);
           break;
         case '/snipe':
           await handleSnipe(ctx);
@@ -391,6 +394,12 @@ class TelegramBot {
       } else if (data === 'cmd_ping_refresh') {
         await this.client.answerCallbackQuery(cb.id, { text: 'Pinging all endpoints...' }).catch(() => {});
         return await handleLatency({ client: this.client, chatId: cb.message.chat.id, messageId: cb.message.message_id });
+      } else if (data === 'cmd_help_menu') {
+        await this.client.answerCallbackQuery(cb.id).catch(() => {});
+        return await handleHelp({ client: this.client, chatId: cb.message.chat.id, messageId: cb.message.message_id });
+      } else if (data.startsWith('help_cat_')) {
+        await this.client.answerCallbackQuery(cb.id).catch(() => {});
+        return await handleHelpCallback(this.client, cb.message.chat.id, cb.message.message_id, data);
       }
       // ─── Sweep Callbacks ────────────────────────────────────
       else if (data.startsWith('sweep_sel:')) {
@@ -473,34 +482,48 @@ class TelegramBot {
 
     // ─── Register slash command menu with Telegram ────────────
     const commandList = [
+      // Navigation & Help
       { command: 'start', description: '🏠 Remote Control Dashboard' },
+      { command: 'menu', description: '📋 Main Navigation Menu' },
+      { command: 'help', description: '📖 User manual & complete documentation' },
+
+      // NFT Sniper & Drop Tracking
+      { command: 'snipe', description: '🎯 Arm new NFT drop with wizard' },
+      { command: 'drops', description: '⏰ View & cancel scheduled drops' },
+      { command: 'trackmint', description: '🎯 Track OpenSea drop phases (T-15m, T-5m, T-0)' },
+      { command: 'trackedmints', description: '📋 List active tracked drops & countdowns' },
+      { command: 'untrackmint', description: '❌ Stop tracking an OpenSea drop' },
+
+      // Whale Copy-Mint Engine
       { command: 'copymint', description: '⚡ Copy-Mint & Whale Tracker controls' },
-      { command: 'copypnl', description: '📊 Copy-Mint PnL Card & Whale Rankings' },
+      { command: 'copymintwallets', description: '💼 Select wallet numbers for copy-minting' },
+      { command: 'copypnl', description: '📊 Copy-Mint PnL report & drop breakdown' },
+      { command: 'pnlcard', description: '🖼️ Generate & deliver visual Trading Card image' },
+      { command: 'resetpnl', description: '🗑️ Wipe PnL stats to clean 0-state' },
       { command: 'track', description: '🐋 Track a new whale wallet' },
       { command: 'tracked', description: '📋 List & manage tracked whales' },
+      { command: 'untrack', description: '❌ Remove a whale from tracking' },
+      { command: 'exportwhales', description: '📋 Export TRACKED_WALLETS for Render env' },
       { command: 'maxprice', description: '💰 Set max ETH price cap per token' },
-      { command: 'paidwallets', description: '💼 Specify wallet numbers for paid drops (e.g. 1-5)' },
+      { command: 'paidwallets', description: '💼 Specify wallet numbers for paid drops' },
       { command: 'quantity', description: '🔢 Set mint quantity per wallet' },
       { command: 'gasmode', description: '⛽ Set gas speed preset' },
       { command: 'setrecipient', description: '📬 Set cold storage forwarding target' },
-      { command: 'snipe', description: '🎯 Arm new NFT drop with wizard' },
-      { command: 'sweep', description: '📦 Sweep NFTs & drain ETH to main' },
-      { command: 'balance', description: '💰 Live wallet balances & nonces' },
-      { command: 'stats', description: '📊 Mint & speed performance logs' },
-      { command: 'export', description: '📥 Export mint history JSON' },
-      { command: 'drops', description: '⏰ View & cancel scheduled drops' },
-      { command: 'wallets', description: '💼 List active session wallets' },
-      { command: 'generate', description: '✨ Generate burner wallets' },
-      { command: 'fund', description: '💸 Auto-distribute ETH from master' },
+
+      // Gas, Latency & VPS Health
       { command: 'gas', description: '⛽ Robinhood Chain live gas & fee calculator' },
       { command: 'ping', description: '📡 Test live network ping to all RPCs & APIs' },
       { command: 'latency', description: '📡 Detailed latency benchmark from Render VPS' },
-      { command: 'trackmint', description: '🎯 Track OpenSea drop phase & get alert before Public' },
-      { command: 'trackedmints', description: '📋 List active tracked drops & countdowns' },
-      { command: 'copymintwallets', description: '💼 Select wallet numbers for copy-minting' },
-      { command: 'exportwhales', description: '📋 Export TRACKED_WALLETS for Render env' },
-      { command: 'status', description: '🖥️ Daemon health & live Gwei' },
-      { command: 'help', description: '📖 Show command overview' }
+      { command: 'status', description: '🖥️ Daemon health, RAM usage & live Gwei' },
+
+      // Wallet Tools & Sweeping
+      { command: 'wallets', description: '💼 List active session burner wallets' },
+      { command: 'balance', description: '💰 Live wallet balances & nonces' },
+      { command: 'generate', description: '✨ Generate burner wallets' },
+      { command: 'fund', description: '💸 Auto-distribute ETH from master' },
+      { command: 'sweep', description: '📦 Sweep NFTs & drain ETH to main' },
+      { command: 'export', description: '📥 Export mint history JSON' },
+      { command: 'stats', description: '📊 Mint & speed performance logs' }
     ];
 
     try {

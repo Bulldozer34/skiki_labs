@@ -85,16 +85,29 @@ class DropTrackerService {
     const nowSec = Math.floor(Date.now() / 1000);
     const stages = dropInfo.stages || [];
 
+    const parseTimeSec = (val) => {
+      if (!val) return null;
+      if (typeof val === 'number') {
+        return val > 1e11 ? Math.floor(val / 1000) : val;
+      }
+      const num = Number(val);
+      if (!isNaN(num) && num > 0) {
+        return num > 1e11 ? Math.floor(num / 1000) : num;
+      }
+      const dt = new Date(val).getTime();
+      return !isNaN(dt) && dt > 0 ? Math.floor(dt / 1000) : null;
+    };
+
     // Identify Public Stage
     const publicStage = stages.find(s => (s.name || '').toLowerCase().includes('public')) || stages[stages.length - 1] || null;
-    const publicStartTime = publicStage?.startTime ? Number(publicStage.startTime) : null;
+    const publicStartTime = parseTimeSec(publicStage?.startTime);
     const publicPrice = publicStage?.mintPrice ? `${publicStage.mintPrice.unit || '0'} ${publicStage.mintPrice.symbol || 'ETH'}` : 'Free / 0 ETH';
 
     // Current active stage
     const currentStage = stages.find(s => {
-      const st = Number(s.startTime);
-      const et = Number(s.endTime);
-      return nowSec >= st && (isNaN(et) || et === 0 || nowSec < et);
+      const st = parseTimeSec(s.startTime);
+      const et = parseTimeSec(s.endTime);
+      return st && nowSec >= st && (!et || et === 0 || nowSec < et);
     }) || null;
 
     const existingIdx = this.trackedDrops.findIndex(d => d.slug === slug);

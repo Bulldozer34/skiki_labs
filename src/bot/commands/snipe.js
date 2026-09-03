@@ -6,6 +6,9 @@ const { riskManager } = require('../../core/riskManager');
 const { buildEndpoints } = require('../../utils/rpcPool');
 const { checkAllWallets } = require('../../engines/eligibilityChecker');
 const { getEthPriceUsd } = require('../../utils/priceFetcher');
+const { resolveCollection } = require('../../utils/resolver');
+const CollectionService = require('../../services/collectionService');
+const connectionManager = require('../../services/connectionManager');
 const logger = require('../../utils/logger');
 
 // In-memory wizard sessions: chatId -> { step, data, token, expiresAt }
@@ -41,7 +44,7 @@ async function handleSnipe(ctx) {
   }
 
   // Target provided directly in command
-  startWizardWithTarget(ctx, target);
+  await startWizardWithTarget(ctx, target);
 }
 
 /**
@@ -50,11 +53,37 @@ async function handleSnipe(ctx) {
 async function startWizardWithTarget(ctx, target) {
   const { client, chatId } = ctx;
 
+  const resolved = resolveCollection(target);
+  let contractAddress = resolved.address;
+  let collectionSlug = resolved.slug;
+  let collectionName = null;
+  let detectedChain = resolved.chain ? resolved.chain.toUpperCase() : null;
+
+  // Attempt auto-resolution from slug via OpenSea v2 API
+  if (!contractAddress && collectionSlug) {
+    try {
+      const details = await CollectionService.getCollectionDetails(collectionSlug);
+      if (details) {
+        contractAddress = details.address;
+        collectionName = details.name;
+        if (!detectedChain && details.chain) {
+          detectedChain = details.chain.toUpperCase();
+        }
+      }
+    } catch (e) {}
+  }
+
+  const isAddress = Boolean(contractAddress && ethers.isAddress(contractAddress));
+
   const wizardState = {
     step: 'SELECT_CHAIN',
     data: {
       target: target,
-      isAddress: target.startsWith('0x') && target.length === 42,
+      collectionSlug: collectionSlug || target,
+      contractAddress: contractAddress || (isAddress ? target : null),
+      collectionName: collectionName,
+      detectedChain: detectedChain,
+      isAddress,
       quantity: 1,
       mode: 'PUBLIC',
       startTime: 0
@@ -83,15 +112,22 @@ async function startWizardWithTarget(ctx, target) {
     ]
   };
 
-  const text = [
+  const displayTarget = collectionName
+    ? `<b>${collectionName}</b>`
+    : `<code>${target}</code>`;
+
+  const textLines = [
     `<b>🎯 Step 1/5 — Select Blockchain</b>`,
     `━━━━━━━━━━━━━━━━━━━━`,
-    `Target: <code>${target}</code>`,
+    `Target: ${displayTarget}`,
+    ...(contractAddress ? [`Contract: <code>${contractAddress}</code>`] : []),
+    ...(collectionSlug ? [`Slug: <code>${collectionSlug}</code>`] : []),
+    ...(detectedChain ? [`Detected Network: <b>${detectedChain}</b>`] : []),
     ``,
     `Select the network where this drop takes place:`
-  ].join('\n');
+  ];
 
-  await client.sendMessage(chatId, text, { parse_mode: 'HTML', reply_markup });
+  await client.sendMessage(chatId, textLines.join('\n'), { parse_mode: 'HTML', reply_markup });
 }
 
 /**
@@ -436,8 +472,11 @@ async function executeEligibilityCheckFromTelegram(ctx, data, messageId) {
     const chainKey = data.chainKey || 'ROBINHOOD';
     const chainConfig = CHAINS[chainKey] || CHAINS.ROBINHOOD;
 
-    const results = await checkAllWallets(wallets, data.target, chainConfig.symbol, {
-      onProgress: (done, total) => {}
+    const slug = data.collectionSlug || resolveCollection(data.target).slug || data.target;
+    const results = await checkAllWallets({
+      wallets,
+      collectionSlug: slug,
+      quantity: data.quantity || 1
     });
 
     const eligibleCount = results.filter(r => r.status === 'ELIGIBLE').length;
@@ -500,6 +539,8 @@ async function scheduleDropInBackground(ctx, data, messageId) {
   const dropJob = {
     id: dropId,
     target: data.target,
+    contractAddress: data.contractAddress,
+    collectionName: data.collectionName,
     chainKey,
     mode: data.mode,
     quantity: data.quantity,
@@ -509,13 +550,18 @@ async function scheduleDropInBackground(ctx, data, messageId) {
   };
   state.activeSnipes.set(dropId, dropJob);
 
+  const displayTarget = data.collectionName
+    ? `<b>${data.collectionName}</b>`
+    : `<code>${data.target}</code>`;
+
   await client.editMessageText(
     chatId,
     messageId,
     [
       `⚡ <b>Sniper Armed & Scheduled in Background!</b>`,
       `━━━━━━━━━━━━━━━━━━━━`,
-      `🎯 <b>Target:</b> <code>${data.target}</code>`,
+      `🎯 <b>Target:</b> ${displayTarget}`,
+      ...(data.contractAddress ? [`📄 <b>Contract:</b> <code>${data.contractAddress}</code>`] : []),
       `🔗 <b>Chain:</b> ${chainKey} | <b>Mode:</b> ${data.mode}`,
       `💼 <b>Wallets:</b> ${data.walletSelectionLabel || `${wallets.length} Wallets`}`,
       `🔢 <b>Quantity:</b> ${data.quantity} NFT(s) per wallet`,
@@ -529,11 +575,36 @@ async function scheduleDropInBackground(ctx, data, messageId) {
   (async () => {
     try {
       const rpcUrl = chainConfig.defaultRpc || 'https://rpc.mainnet.chain.robinhood.com';
-      const provider = new ethers.JsonRpcProvider(rpcUrl);
+      const provider = connectionManager?.createEthersProvider
+        ? connectionManager.createEthersProvider(rpcUrl, chainConfig.chainId)
+        : new ethers.JsonRpcProvider(rpcUrl);
       const endpointData = buildEndpoints(chainConfig, rpcUrl);
 
       const isL2 = chainConfig.chainId !== 1;
       const gasSettings = resolveGasPreset(isL2 ? 'turbo' : 'ultra', { isL2 });
+
+      // Resolve contract address if not already resolved
+      let nftContractAddress = data.contractAddress;
+      if (!nftContractAddress && ethers.isAddress(data.target)) {
+        nftContractAddress = data.target;
+      }
+      if (!nftContractAddress && data.collectionSlug) {
+        nftContractAddress = await CollectionService.getContractFromSlug(data.collectionSlug);
+      }
+      if (!nftContractAddress && data.target && !data.target.startsWith('0x')) {
+        const resolved = resolveCollection(data.target);
+        if (resolved.address) {
+          nftContractAddress = resolved.address;
+        } else if (resolved.slug) {
+          nftContractAddress = await CollectionService.getContractFromSlug(resolved.slug);
+        }
+      }
+
+      if (!nftContractAddress && data.mode === 'PUBLIC') {
+        throw new Error(`Direct SeaDrop Public Mint requires a 0x contract address. Could not resolve contract for "${data.target}". Please run /snipe with the 0x contract address directly.`);
+      }
+
+      const collectionSlug = data.collectionSlug || (data.target && !data.target.startsWith('0x') ? resolveCollection(data.target).slug : null) || data.target;
 
       const onFiring = async () => {
         logger.info(`[Snipe] 🚀 Drop countdown reached T-0! Firing transactions now for ${data.target}`);
@@ -542,7 +613,8 @@ async function scheduleDropInBackground(ctx, data, messageId) {
           [
             `🚀 <b>FIRING SCHEDULED MINT NOW!</b>`,
             `━━━━━━━━━━━━━━━━━━━━`,
-            `🎯 <b>Target:</b> <code>${data.target}</code>`,
+            `🎯 <b>Target:</b> ${data.collectionName ? `<b>${data.collectionName}</b>` : `<code>${data.target}</code>`}`,
+            `📄 <b>Contract:</b> <code>${nftContractAddress || data.target}</code>`,
             `🔗 <b>Chain:</b> ${chainKey} | <b>Mode:</b> ${data.mode}`,
             `💼 <b>Wallets:</b> ${wallets.length} burner wallets`,
             `🔢 <b>Quantity:</b> ${data.quantity} NFT(s) per wallet`,
@@ -560,8 +632,8 @@ async function scheduleDropInBackground(ctx, data, messageId) {
         endpoints: endpointData.endpoints,
         rpcUrls: endpointData.urls,
         feedUrl: chainConfig.feedUrl,
-        nftContractAddress: data.target,
-        collectionSlug: data.target,
+        nftContractAddress: nftContractAddress || data.target,
+        collectionSlug: collectionSlug || data.target,
         chain: chainConfig,
         quantity: data.quantity,
         gasSettings,

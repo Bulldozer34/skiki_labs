@@ -47,11 +47,16 @@ async function handleDrops(ctx) {
       ? `${new Date(drop.startTime * 1000).toLocaleTimeString()} (in ${formatDuration(timeRemaining)})`
       : 'Immediate Execution';
 
-    const shortTarget = drop.target && drop.target.length > 20
-      ? `${drop.target.slice(0, 8)}...${drop.target.slice(-6)}`
-      : drop.target;
+    const shortTarget = drop.collectionName
+      ? `${drop.collectionName}`
+      : (drop.target && drop.target.length > 20
+          ? `${drop.target.slice(0, 8)}...${drop.target.slice(-6)}`
+          : drop.target);
+
+    const contractLine = drop.contractAddress ? `• <b>Contract:</b> <code>${drop.contractAddress}</code>` : null;
 
     lines.push(`<b>#${idx}: ${shortTarget}</b>`);
+    if (contractLine) lines.push(contractLine);
     lines.push(`• <b>Chain:</b> ${drop.chainKey} | <b>Mode:</b> ${drop.mode}`);
     lines.push(`• <b>Quantity:</b> ${drop.quantity} NFT(s) per wallet`);
     lines.push(`• <b>Starts:</b> ${timeStr}`);
@@ -59,7 +64,7 @@ async function handleDrops(ctx) {
     lines.push(``);
 
     inline_keyboard.push([
-      { text: `❌ Cancel #${idx} (${shortTarget})`, callback_data: `drop_cancel:${id}` }
+      { text: `❌ Cancel #${idx} (${shortTarget.slice(0, 16)})`, callback_data: `drop_cancel:${id}` }
     ]);
 
     idx++;
