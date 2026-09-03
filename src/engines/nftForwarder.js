@@ -38,6 +38,11 @@ async function forwardNftsFromReceipt({ receipt, signer, recipientAddress, provi
         const toAddress = (parsed721.args.to || '').toLowerCase();
 
         if (toAddress === signerAddress) {
+          if (signerAddress === recipientAddress.toLowerCase()) {
+            logger.info(`Token #${tokenId} is already in recipient wallet ${signerAddress.slice(0, 6)}... (skipping self-transfer)`);
+            forwardedTokens.push({ standard: 'ERC721', tokenId, contractAddress: log.address, txHash: null });
+            continue;
+          }
           logger.info(`Forwarding ERC-721 Token #${tokenId} from ${signerAddress.slice(0, 6)}... to ${recipientAddress.slice(0, 6)}...`);
           try {
             const nftContract = new Contract(log.address, ERC721_ABI, signer);
@@ -71,6 +76,11 @@ async function forwardNftsFromReceipt({ receipt, signer, recipientAddress, provi
         const toAddress = (parsed1155.args.to || '').toLowerCase();
 
         if (toAddress === signerAddress) {
+          if (signerAddress === recipientAddress.toLowerCase()) {
+            logger.info(`ERC-1155 Token #${tokenId} is already in recipient wallet ${signerAddress.slice(0, 6)}... (skipping self-transfer)`);
+            forwardedTokens.push({ standard: 'ERC1155', tokenId, amount, contractAddress: log.address, txHash: null });
+            continue;
+          }
           logger.info(`Forwarding ERC-1155 Token #${tokenId} (qty: ${amount}) to ${recipientAddress.slice(0, 6)}...`);
           try {
             const nftContract = new Contract(log.address, ERC1155_ABI, signer);
