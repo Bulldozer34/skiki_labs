@@ -200,32 +200,27 @@ async function handleSnipeCallback(ctx, action, param) {
     const wallets = state.wallets || [];
     const chainConfig = CHAINS[wizard.data.chainKey] || CHAINS.ROBINHOOD;
     const rpcUrl = chainConfig.defaultRpc || 'https://rpc.mainnet.chain.robinhood.com';
-    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    const provider = connectionManager?.createEthersProvider
+      ? connectionManager.createEthersProvider(rpcUrl, chainConfig.chainId)
+      : new ethers.JsonRpcProvider(rpcUrl);
 
-    // Fetch live balances for each wallet
-    let fundedCount = 0;
-    const balanceMap = [];
-
-    for (let i = 0; i < wallets.length; i++) {
-      const w = wallets[i];
-      let balEth = '0.000';
+    // Fetch live balances for each wallet concurrently
+    const balanceResults = await Promise.all(wallets.map(async (w, i) => {
+      let num = 0;
       try {
         const bal = await provider.getBalance(w.address);
-        balEth = ethers.formatEther(bal);
+        num = parseFloat(ethers.formatEther(bal));
       } catch (e) {}
-
-      const num = parseFloat(balEth);
-      const isFunded = num > 0;
-      if (isFunded) fundedCount++;
-      balanceMap.push({
+      return {
         index: i,
         address: w.address,
         balanceEth: num,
         label: `${w.address.slice(0, 6)}...${w.address.slice(-4)} (${num.toFixed(4)} ETH)`
-      });
-    }
+      };
+    }));
 
-    wizard.data.balanceMap = balanceMap;
+    const fundedCount = balanceResults.filter(b => b.balanceEth > 0).length;
+    wizard.data.balanceMap = balanceResults;
 
     const keyboard = [
       [
@@ -381,7 +376,28 @@ async function handleSnipeCallback(ctx, action, param) {
       );
     }
 
-    wizard.data.startTime = (param === 'AUTO_SYNC') ? 0 : 0; // 0 engages on-chain sync
+    if (param === 'AUTO_SYNC') {
+      wizard.data.startTime = 0; // 0 engages on-chain sync
+      if (wizard.data.contractAddress) {
+        try {
+          const chainKey = wizard.data.chainKey || 'ROBINHOOD';
+          const chainConfig = CHAINS[chainKey] || CHAINS.ROBINHOOD;
+          const { SEADROP_ADDRESSES, getPublicDropParams } = require('../../contracts/seadrop');
+          const seadropAddress = SEADROP_ADDRESSES[chainKey] || SEADROP_ADDRESSES.ROBINHOOD;
+          const rpcUrl = chainConfig.defaultRpc || 'https://rpc.mainnet.chain.robinhood.com';
+          const provider = connectionManager?.createEthersProvider
+            ? connectionManager.createEthersProvider(rpcUrl, chainConfig.chainId)
+            : new ethers.JsonRpcProvider(rpcUrl);
+          const dropParams = await getPublicDropParams(provider, seadropAddress, wizard.data.contractAddress);
+          if (dropParams && dropParams.startTime > 0n) {
+            wizard.data.onChainStartTime = Number(dropParams.startTime);
+          }
+        } catch (e) {}
+      }
+    } else {
+      wizard.data.startTime = 1;
+    }
+
     wizard.step = 'CONFIRM';
     await client.answerCallbackQuery(callbackQuery.id);
     return await showConfirmationCard(ctx, wizard, callbackQuery.message.message_id);
@@ -413,14 +429,30 @@ async function showConfirmationCard(ctx, wizard, messageId) {
 
   const selectedWallets = wizard.data.selectedWallets || state.wallets || [];
   const walletLabel = wizard.data.walletSelectionLabel || `${selectedWallets.length} Wallets`;
-  const timeStr = wizard.data.startTime > 0
-    ? new Date(wizard.data.startTime * 1000).toLocaleTimeString()
-    : '⚡ Immediate / On-Chain Auto-Sync';
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  let timeStr = '⚡ Immediate Execution';
+  if (wizard.data.startTime > 1) {
+    const diff = wizard.data.startTime - nowSec;
+    timeStr = `${new Date(wizard.data.startTime * 1000).toLocaleTimeString()} (${diff > 0 ? `in ${Math.floor(diff / 60)}m ${diff % 60}s` : 'Due now'})`;
+  } else if (wizard.data.startTime === 0) {
+    if (wizard.data.onChainStartTime && wizard.data.onChainStartTime > nowSec) {
+      const diff = wizard.data.onChainStartTime - nowSec;
+      timeStr = `🎯 ${new Date(wizard.data.onChainStartTime * 1000).toLocaleTimeString()} (in ${Math.floor(diff / 60)}m ${diff % 60}s) — On-Chain Drop Time`;
+    } else {
+      timeStr = '🎯 Auto-Sync On-Chain Drop Time (T-0 Execution)';
+    }
+  }
+
+  const displayTarget = wizard.data.collectionName
+    ? `<b>${wizard.data.collectionName}</b>`
+    : `<code>${wizard.data.target}</code>`;
 
   const text = [
     `<b>⚡ Review & Confirm Mint Arming</b>`,
     `━━━━━━━━━━━━━━━━━━━━`,
-    `🎯 <b>Target:</b> <code>${wizard.data.target}</code>`,
+    `🎯 <b>Target:</b> ${displayTarget}`,
+    ...(wizard.data.contractAddress ? [`📄 <b>Contract:</b> <code>${wizard.data.contractAddress}</code>`] : []),
     `🔗 <b>Chain:</b> ${wizard.data.chainKey}`,
     `⚙️ <b>Mode:</b> ${wizard.data.mode}`,
     `💼 <b>Wallets:</b> ${walletLabel}`,

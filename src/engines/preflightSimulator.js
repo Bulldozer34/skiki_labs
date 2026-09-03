@@ -4,6 +4,7 @@ const { translate } = require('../utils/errorTranslator');
 // Common SeaDrop and ERC-721/1155 Custom Error Signatures
 const COMMON_ERRORS_ABI = [
   'error NotActive()',
+  'error NotActive(uint256 currentTimestamp, uint256 startTimestamp, uint256 endTimestamp)',
   'error MintNotLive()',
   'error DropNotActive()',
   'error DropStageNotActive()',

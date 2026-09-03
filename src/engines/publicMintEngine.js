@@ -142,7 +142,7 @@ async function executePublicMint(config, state) {
         to: seadropAddress,
         data: calldata,
         value: totalCostPerWalletWei,
-        gasLimit: parseInt(gasSettings.gasLimit) || 300000,
+        gasLimit: Math.max(parseInt(gasSettings.gasLimit) || 350000, 160000 + (quantity * 25000)),
         maxFeePerGas: maxFeePerGasWei,
         maxPriorityFeePerGas: maxPriorityFeePerGasWei,
         nonce: nonce,
