@@ -29,6 +29,9 @@ async function handleCopyMintMenu(client, chatId, messageId = null, state = {}) 
   const autoForward = state.autoForward !== false && (state.recipientAddress || process.env.RECIPIENT_ADDRESS);
   const safeMode = state.copyUnknownCalls !== true;
   const totalWallets = state.wallets ? state.wallets.length : 100;
+  const copyWalletRule = state.copyMintWallets || process.env.COPYMINT_WALLETS || 'all';
+  const copyIndices = parseWalletNumbers(copyWalletRule, totalWallets);
+  const formattedCopy = formatWalletNumbers(copyIndices, totalWallets);
   const paidWalletRule = state.paidWalletNumbers || process.env.PAID_WALLET_NUMBERS || '1-5';
   const paidIndices = parseWalletNumbers(paidWalletRule, totalWallets);
   const formattedPaid = formatWalletNumbers(paidIndices, totalWallets);
@@ -41,7 +44,8 @@ async function handleCopyMintMenu(client, chatId, messageId = null, state = {}) 
     `🐋 <b>Tracked Whales:</b> <code>${activeTrackedCount}</code> active (${trackedWallets.length} total)`,
     `💰 <b>Max Price Cap:</b> <code>${maxMintEth} ETH</code> per token`,
     `🔢 <b>Mint Quantity:</b> <code>${quantity}x</code> per burner wallet`,
-    `💼 <b>Paid Drop Wallets:</b> <code>${formattedPaid}</code> (Free drops use ALL)`,
+    `💼 <b>Copy Wallets:</b> <code>${formattedCopy}</code>`,
+    `💳 <b>Paid Drop Wallets:</b> <code>${formattedPaid}</code>`,
     `⛽ <b>Gas Speed:</b> <code>${gasMode}</code>`,
     `📬 <b>Auto-Forward:</b> ${autoForward ? `<code>${String(state.recipientAddress || process.env.RECIPIENT_ADDRESS).slice(0, 8)}...</code>` : '🔴 Disabled'}`,
     `🛡 <b>Safety Mode:</b> ${safeMode ? '🟢 Strict (Verified Mints Only)' : '🟡 Permissive'}`,
@@ -60,22 +64,25 @@ async function handleCopyMintMenu(client, chatId, messageId = null, state = {}) 
       ],
       [
         { text: '📊 View Copy-Mint PnL Card', callback_data: 'cm_pnl' },
-        { text: `💼 Paid Wallets (${formattedPaid.slice(0, 10)}...)`, callback_data: 'cm_menu_paid' }
+        { text: `💼 Copy Wallets (${formattedCopy.slice(0, 10)})`, callback_data: 'cm_menu_copywallets' }
       ],
       [
-        { text: `💰 Price Cap (${maxMintEth} ETH)`, callback_data: 'cm_menu_price' },
-        { text: `🔢 Quantity (${quantity}x)`, callback_data: 'cm_menu_qty' }
+        { text: `💳 Paid Wallets (${formattedPaid.slice(0, 10)})`, callback_data: 'cm_menu_paid' },
+        { text: `💰 Price Cap (${maxMintEth} ETH)`, callback_data: 'cm_menu_price' }
       ],
       [
-        { text: `⛽ Gas (${gasMode})`, callback_data: 'cm_menu_gas' },
-        { text: `🛡 Safe Mode (${safeMode ? 'ON' : 'OFF'})`, callback_data: 'cm_toggle_safemode' }
+        { text: `🔢 Quantity (${quantity}x)`, callback_data: 'cm_menu_qty' },
+        { text: `⛽ Gas (${gasMode})`, callback_data: 'cm_menu_gas' }
       ],
       [
-        { text: `📋 Tracked Whales (${activeTrackedCount})`, callback_data: 'cmd_tracked' },
-        { text: '➕ Add Whale', callback_data: 'cm_add_whale_prompt' }
+        { text: `🛡 Safe Mode (${safeMode ? 'ON' : 'OFF'})`, callback_data: 'cm_toggle_safemode' },
+        { text: `📋 Tracked Whales (${activeTrackedCount})`, callback_data: 'cmd_tracked' }
       ],
       [
-        { text: '📈 Tracker Stats', callback_data: 'cm_stats' },
+        { text: '➕ Add Whale', callback_data: 'cm_add_whale_prompt' },
+        { text: '📈 Tracker Stats', callback_data: 'cm_stats' }
+      ],
+      [
         { text: '◀️ Back to Dashboard', callback_data: 'menu_back' }
       ]
     ]
@@ -275,15 +282,35 @@ async function handleCopyMintCallback(client, chatId, messageId, data, state = {
     return await client.editMessageText(chatId, messageId, promptText, { parse_mode: 'HTML', reply_markup }).catch(() => {});
   }
 
-  // PnL Card view
-  if (data === 'cm_pnl') {
-    return await handleCopyMintPnL(client, chatId, messageId);
+  // Copy-Mint Wallets Sub-Menu
+  if (data === 'cm_menu_copywallets') {
+    return await handleCopyMintWalletsMenu(client, chatId, messageId, state);
   }
 
-  // Generate & Download HD Card
-  if (data === 'cm_pnl_card') {
-    await client.answerCallbackQuery(cb.id, { text: 'Rendering HD PnL Card...' }).catch(() => {});
-    return await handleCopyMintPnL(client, chatId, null, true);
+  // Set Copy-Mint Wallets preset
+  if (data.startsWith('cm_set_copywallets:')) {
+    const rule = data.split(':')[1];
+    state.copyMintWallets = rule;
+    await client.answerCallbackQuery(cb.id, { text: `Copy-Mint Wallets set to: ${rule}` }).catch(() => {});
+    return await handleCopyMintMenu(client, chatId, messageId, state);
+  }
+
+  // PnL Card view (all drops or filtered)
+  if (data === 'cm_pnl') {
+    return await handleCopyMintPnL(client, chatId, messageId, false, null);
+  }
+
+  // Filtered PnL for specific individual collection
+  if (data.startsWith('cm_pnl_coll_')) {
+    const filter = data.replace('cm_pnl_coll_', '');
+    return await handleCopyMintPnL(client, chatId, messageId, false, filter);
+  }
+
+  // Generate & Download HD Card (with inline Photo and SVG file)
+  if (data === 'cm_pnl_card' || data.startsWith('cm_pnl_card_')) {
+    const filter = data.startsWith('cm_pnl_card_') ? data.replace('cm_pnl_card_', '') : null;
+    await client.answerCallbackQuery(cb.id, { text: 'Rendering HD PnL Card & Image...' }).catch(() => {});
+    return await handleCopyMintPnL(client, chatId, null, true, filter);
   }
 
   // Reset PnL
@@ -319,32 +346,53 @@ async function handleCopyMintCallback(client, chatId, messageId, data, state = {
 }
 
 /**
- * Render Copy-Mint PnL & Performance Report
+ * Render Copy-Mint PnL & Performance Report (with inline PNG Photo & SVG Vector Card)
  */
-async function handleCopyMintPnL(client, chatId, messageId = null, sendCardFile = false) {
-  const summary = await copyMintPnL.getSummary();
+async function handleCopyMintPnL(client, chatId, messageId = null, sendCardFile = false, targetContractOrSlug = null) {
+  const summary = await copyMintPnL.getSummary(targetContractOrSlug);
   PnLCardGenerator.saveSvgCardToFile(summary);
   const text = PnLCardGenerator.formatTelegramMessage(summary);
 
-  const reply_markup = {
-    inline_keyboard: [
-      [
-        { text: '🖼️ Download HD Trading Card (SVG)', callback_data: 'cm_pnl_card' },
-        { text: '🔄 Refresh', callback_data: 'cm_pnl' }
-      ],
-      [
-        { text: '🗑️ Reset PnL to 0', callback_data: 'cm_pnl_reset_confirm' },
-        { text: '◀️ Back to Menu', callback_data: 'menu_copymint' }
-      ]
+  const keyboard = [
+    [
+      { text: '🖼️ Send Card Image & File', callback_data: `cm_pnl_card${targetContractOrSlug ? `_${targetContractOrSlug}` : ''}` },
+      { text: '🔄 Refresh', callback_data: `cm_pnl${targetContractOrSlug ? `_${targetContractOrSlug}` : ''}` }
     ]
-  };
+  ];
+
+  // If viewing all drops and multiple individual collections exist, add tap buttons per drop!
+  if (!targetContractOrSlug && summary.topCollections && summary.topCollections.length > 0) {
+    const collButtons = summary.topCollections.slice(0, 4).map(c => ({
+      text: `🔎 ${c.collectionName.slice(0, 16)} (+$${(c.netProfitUsd || 0).toFixed(0)})`,
+      callback_data: `cm_pnl_coll_${c.contractAddress.slice(0, 10)}`
+    }));
+    for (let i = 0; i < collButtons.length; i += 2) {
+      keyboard.push(collButtons.slice(i, i + 2));
+    }
+  }
+
+  keyboard.push([
+    { text: '🗑️ Reset PnL to 0', callback_data: 'cm_pnl_reset_confirm' },
+    { text: targetContractOrSlug ? '📊 All Drops PnL' : '◀️ Back to Menu', callback_data: targetContractOrSlug ? 'cm_pnl' : 'menu_copymint' }
+  ]);
+
+  const reply_markup = { inline_keyboard: keyboard };
 
   if (sendCardFile) {
     const svgCode = PnLCardGenerator.generateSvgCard(summary);
+    const photoUrl = PnLCardGenerator.generateQuickChartCardUrl(summary);
+    const filename = `${(summary.topCollections[0]?.collectionSlug || 'copymint')}_card.svg`;
     try {
-      return await client.sendDocument(chatId, Buffer.from(svgCode, 'utf-8'), 'pnl_trading_card.svg', text, { reply_markup });
+      // 1. Send the visual image card
+      await client.sendPhoto(chatId, photoUrl, text, { reply_markup });
+      // 2. Also send the HD vector SVG document file
+      await client.sendDocument(chatId, Buffer.from(svgCode, 'utf-8'), filename);
+      return;
     } catch (err) {
-      // Fallback to text message if upload fails
+      logger.warn(`[CopyMint] sendPhoto failed, fallback to sendDocument: ${err.message}`);
+      try {
+        return await client.sendDocument(chatId, Buffer.from(svgCode, 'utf-8'), filename, text, { reply_markup });
+      } catch (err2) {}
     }
   }
 
@@ -516,12 +564,80 @@ async function handleSetPaidWallets(client, chatId, text, state) {
   );
 }
 
+/**
+ * Render Copy-Mint Wallets Sub-Menu
+ */
+async function handleCopyMintWalletsMenu(client, chatId, messageId, state) {
+  const totalWallets = state.wallets ? state.wallets.length : 100;
+  const currentRule = state.copyMintWallets || process.env.COPYMINT_WALLETS || 'all';
+  const indices = parseWalletNumbers(currentRule, totalWallets);
+  const formatted = formatWalletNumbers(indices, totalWallets);
+
+  const text = [
+    `💼 <b>Configure Wallets for Copy-Minting</b>`,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    `Current Active Wallets: <code>${formatted}</code>`,
+    `\n<i>Select which burner wallets participate in whale copy-mints.</i>`,
+    `\nSelect a preset below or send <code>/copymintwallets &lt;numbers&gt;</code> (e.g. <code>/copymintwallets 1, 2</code> or <code>/copymintwallets 1-5</code>):`
+  ].join('\n');
+
+  const reply_markup = {
+    inline_keyboard: [
+      [
+        { text: 'Wallets #1, #2', callback_data: 'cm_set_copywallets:1,2' },
+        { text: 'Wallets #1–#5', callback_data: 'cm_set_copywallets:1-5' }
+      ],
+      [
+        { text: 'Wallets #1–#10', callback_data: 'cm_set_copywallets:1-10' },
+        { text: 'Wallets #1–#20', callback_data: 'cm_set_copywallets:1-20' }
+      ],
+      [
+        { text: '🌐 All Wallets (100%)', callback_data: 'cm_set_copywallets:all' }
+      ],
+      [
+        { text: '◀️ Back to Copy-Mint Menu', callback_data: 'menu_copymint' }
+      ]
+    ]
+  };
+
+  return await client.editMessageText(chatId, messageId, text, { parse_mode: 'HTML', reply_markup }).catch(() => {});
+}
+
+/**
+ * Handle /copymintwallets <numbers>
+ */
+async function handleSetCopyMintWallets(client, chatId, text, state) {
+  const totalWallets = state.wallets ? state.wallets.length : 100;
+  const parts = (text || '').trim().split(/\s+/);
+  const rawRule = parts.slice(1).join(' ');
+
+  if (!rawRule) {
+    return await client.sendMessage(
+      chatId,
+      `⚠️ Usage: <code>/copymintwallets &lt;1, 2 | 1-5 | all&gt;</code>\nExample: <code>/copymintwallets 1, 2</code>`,
+      { parse_mode: 'HTML' }
+    );
+  }
+
+  const indices = parseWalletNumbers(rawRule, totalWallets);
+  const formatted = formatWalletNumbers(indices, totalWallets);
+
+  state.copyMintWallets = rawRule;
+  await client.sendMessage(
+    chatId,
+    `✅ <b>Copy-Mint Wallets updated to:</b> <code>${formatted}</code>.\nWhale copy-mints will now execute on these wallets.`,
+    { parse_mode: 'HTML' }
+  );
+}
+
 module.exports = {
   handleCopyMintMenu,
   handleCopyMintCallback,
   handleCopyMintPnL,
   handlePaidWalletsMenu,
   handleSetPaidWallets,
+  handleCopyMintWalletsMenu,
+  handleSetCopyMintWallets,
   handleSetMaxPrice,
   handleSetQuantity,
   handleSetGasMode,

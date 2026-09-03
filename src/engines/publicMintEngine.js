@@ -369,6 +369,9 @@ async function executePublicMint(config, state) {
 
   // Multi-RPC FIFO Sequencer Packet Flood
   logger.speed(`>>> ⚡ FIRE! ${broadcaster.burstOffsets.length}-pulse micro-burst across ${broadcaster.rpcUrls.length} node(s) for ${validPrepared.length} wallet(s) (Lead: ${leadTimeMs}ms) <<<`);
+  if (typeof config.onFiring === 'function') {
+    try { config.onFiring(); } catch {}
+  }
   if (dropTrigger.reason === 'spin' && dropTrigger.overshootMs > 5) {
     logger.warn(`Trigger overshot the target instant by ${dropTrigger.overshootMs}ms — warmup ran long.`);
   }

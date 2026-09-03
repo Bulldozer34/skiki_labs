@@ -120,8 +120,13 @@ class CopyMintPnLService {
    */
   async getSummary(targetContract = null) {
     const ethPrice = await getEthPriceUsd().catch(() => 2500) || 2500;
-    const records = targetContract
-      ? this.records.filter(r => r.contractAddress === targetContract.toLowerCase())
+    const filterQuery = (targetContract || '').toLowerCase().trim();
+    const records = filterQuery
+      ? this.records.filter(r => 
+          (r.contractAddress && r.contractAddress.toLowerCase() === filterQuery) ||
+          (r.collectionSlug && r.collectionSlug.toLowerCase().includes(filterQuery)) ||
+          (r.collectionName && r.collectionName.toLowerCase().includes(filterQuery))
+        )
       : this.records;
 
     let totalMinted = 0;

@@ -15,11 +15,16 @@ const {
   handleCopyMintPnL,
   handlePaidWalletsMenu,
   handleSetPaidWallets,
+  handleCopyMintWalletsMenu,
+  handleSetCopyMintWallets,
   handleSetMaxPrice,
   handleSetQuantity,
   handleSetGasMode,
   handleSetRecipient
 } = require('./commands/copymint');
+const { handleGas } = require('./commands/gas');
+const { handleTrackMint, handleTrackedMints, handleUntrackMint } = require('./commands/trackmint');
+const dropTrackerService = require('../services/dropTrackerService');
 const trackedWalletService = require('../services/trackedWalletService');
 const copyMintPnL = require('../services/copyMintPnL');
 const logger = require('../utils/logger');
@@ -211,13 +216,40 @@ class TelegramBot {
         case '/copymintpnl':
         case '/pnlcard': {
           const wantsCard = (text || '').toLowerCase().includes('card') || command === '/pnlcard';
-          await handleCopyMintPnL(this.client, msg.chat.id, null, wantsCard);
+          const cleanArg = (text || '').replace(/^\/(copypnl|copymintpnl|pnlcard)/i, '').replace(/card/i, '').trim();
+          await handleCopyMintPnL(this.client, msg.chat.id, null, wantsCard, cleanArg || null);
           break;
         }
         case '/resetpnl':
         case '/clearpnl': {
           copyMintPnL.reset();
           await this.client.sendMessage(msg.chat.id, '🗑️ <b>Copy-Mint PnL database wiped clean!</b> All mock records removed. Starting fresh with 0 drops.', { parse_mode: 'HTML' });
+          break;
+        }
+        case '/gas':
+        case '/fees':
+          await handleGas(ctx);
+          break;
+        case '/trackmint':
+          await handleTrackMint(ctx);
+          break;
+        case '/trackedmints':
+          await handleTrackedMints(ctx);
+          break;
+        case '/untrackmint':
+          await handleUntrackMint(ctx);
+          break;
+        case '/copymintwallets':
+        case '/copywallets':
+          await handleSetCopyMintWallets(this.client, msg.chat.id, text, this.state);
+          break;
+        case '/exportwhales': {
+          const envStr = trackedWalletService.exportEnvString();
+          await this.client.sendMessage(
+            msg.chat.id,
+            `📋 <b>Render Cloud Tracked Whales Variable:</b>\n\n<code>TRACKED_WALLETS=${envStr}</code>\n\n<i>Copy and paste this into your Render Environment Variables so your tracked whales persist across all restarts.</i>`,
+            { parse_mode: 'HTML' }
+          );
           break;
         }
         case '/export':
@@ -328,10 +360,29 @@ class TelegramBot {
         return await handleTracked(this.client, cb.message.chat.id, cb.message.message_id);
       }
 
-      // ─── Snipe Wizard Callbacks ─────────────────────────────
-      if (data.startsWith('snipe_')) {
+      // ─── Snipe Direct / Wizard Callbacks ─────────────────────
+      if (data.startsWith('snipe_now_')) {
+        const target = data.replace('snipe_now_', '');
+        await this.client.answerCallbackQuery(cb.id, { text: `Arming sniper for ${target.slice(0, 10)}...` }).catch(() => {});
+        return await handleSnipe({ ...ctx, args: [target] });
+      } else if (data.startsWith('snipe_')) {
         const [action, param] = data.replace('snipe_', '').split(':');
         await handleSnipeCallback(ctx, action, param);
+      }
+      // ─── Drop Tracking Callbacks ────────────────────────────
+      else if (data === 'cmd_tracked_mints') {
+        await this.client.answerCallbackQuery(cb.id).catch(() => {});
+        return await handleTrackedMints({ client: this.client, chatId: cb.message.chat.id, messageId: cb.message.message_id });
+      } else if (data.startsWith('untrack_mint_')) {
+        const slug = data.replace('untrack_mint_', '');
+        dropTrackerService.untrackDrop(slug);
+        await this.client.answerCallbackQuery(cb.id, { text: `Untracked ${slug}` }).catch(() => {});
+        return await handleTrackedMints({ client: this.client, chatId: cb.message.chat.id, messageId: cb.message.message_id });
+      }
+      // ─── Gas Refresh Callback ────────────────────────────────
+      else if (data === 'cmd_gas_refresh') {
+        await this.client.answerCallbackQuery(cb.id, { text: 'Refreshing gas...' }).catch(() => {});
+        return await handleGas({ client: this.client, chatId: cb.message.chat.id, state: this.state, messageId: cb.message.message_id });
       }
       // ─── Sweep Callbacks ────────────────────────────────────
       else if (data.startsWith('sweep_sel:')) {
@@ -433,6 +484,11 @@ class TelegramBot {
       { command: 'wallets', description: '💼 List active session wallets' },
       { command: 'generate', description: '✨ Generate burner wallets' },
       { command: 'fund', description: '💸 Auto-distribute ETH from master' },
+      { command: 'gas', description: '⛽ Robinhood Chain live gas & fee calculator' },
+      { command: 'trackmint', description: '🎯 Track OpenSea drop phase & get alert before Public' },
+      { command: 'trackedmints', description: '📋 List active tracked drops & countdowns' },
+      { command: 'copymintwallets', description: '💼 Select wallet numbers for copy-minting' },
+      { command: 'exportwhales', description: '📋 Export TRACKED_WALLETS for Render env' },
       { command: 'status', description: '🖥️ Daemon health & live Gwei' },
       { command: 'help', description: '📖 Show command overview' }
     ];
@@ -457,7 +513,9 @@ class TelegramBot {
       logger.warn(`[TelegramBot] Could not flush stale updates: ${e.message}`);
     }
 
+    // Start background drop phase transition tracker
     if (this.allowedChatId) {
+      dropTrackerService.start(this.client, this.allowedChatId);
       logger.info(`🔒 Security Allowlist Active: Chat ID ${this.allowedChatId}`);
       await this.client.sendMessage(
         this.allowedChatId,

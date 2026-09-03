@@ -123,6 +123,8 @@ async function startDaemon() {
           quantity: parseInt(process.env.DEFAULT_MINT_QUANTITY || '1', 10),
           maxMintEth: parseFloat(daemonState.maxMintEth || '0.05'),
           gasMode: process.env.DEFAULT_GAS_MODE || 'RAPID',
+          copyMintWallets: daemonState.copyMintWallets || process.env.COPYMINT_WALLETS || 'all',
+          paidWalletNumbers: daemonState.paidWalletNumbers || process.env.PAID_WALLET_NUMBERS || 'all',
           autoForward: process.env.AUTO_FORWARD_COPY_MINTS !== 'false'
         }
       });

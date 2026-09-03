@@ -682,6 +682,9 @@ async function executeAllowlistMint(config, state) {
 
   // 6. Parallel Multi-RPC 5-Pulse Burst Broadcast
   logger.speed(`>>> ⚡ FIRE! 5-Pulse Micro-Burst Storm across ${broadcaster.rpcUrls.length} RPC node(s) (Lead: ${leadTimeMs}ms) <<<`);
+  if (typeof config.onFiring === 'function') {
+    try { config.onFiring(); } catch {}
+  }
   if (dropTrigger.reason === 'spin' && dropTrigger.overshootMs > 5) {
     logger.warn(`Trigger overshot the target instant by ${dropTrigger.overshootMs}ms — warmup ran long.`);
   }

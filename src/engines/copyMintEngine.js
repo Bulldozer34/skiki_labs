@@ -159,19 +159,27 @@ class CopyMintEngine {
       }
     } catch {}
 
-    // 7. Select Target Wallets (All for Free drops, Selected numbers for Paid drops)
+    // 7. Select Target Wallets (Honoring copyMintWallets selection & paid wallet rules)
     let targetWalletIndices = Array.from({ length: wallets.length }, (_, i) => i);
+    const copyMintRule = options.copyMintWallets || process.env.COPYMINT_WALLETS || 'all';
+    if (copyMintRule !== 'all') {
+      targetWalletIndices = parseWalletNumbers(copyMintRule, wallets.length);
+    }
+
     if (paymentPlan.paymentMode === 'paid') {
       const paidRule = options.paidWalletNumbers || process.env.PAID_WALLET_NUMBERS || 'all';
-      targetWalletIndices = parseWalletNumbers(paidRule, wallets.length);
-      logger.info(`[CopyMint] 💰 Paid drop detected (${paymentPlan.selectedValueEth} ETH). Executing on ${targetWalletIndices.length}/${wallets.length} designated wallets (${paidRule}).`);
+      if (paidRule !== 'all') {
+        const paidIndices = new Set(parseWalletNumbers(paidRule, wallets.length));
+        targetWalletIndices = targetWalletIndices.filter(i => paidIndices.has(i));
+      }
+      logger.info(`[CopyMint] 💰 Paid drop detected (${paymentPlan.selectedValueEth} ETH). Executing on ${targetWalletIndices.length}/${wallets.length} designated wallets.`);
     } else {
-      logger.info(`[CopyMint] 🆓 Free drop detected ($0 ETH). Executing on ALL ${wallets.length} burner wallets!`);
+      logger.info(`[CopyMint] 🆓 Free drop detected ($0 ETH). Executing on ${targetWalletIndices.length}/${wallets.length} designated copy-mint wallets (${copyMintRule}).`);
     }
 
     if (targetWalletIndices.length === 0) {
-      logger.warn('[CopyMint] No wallets configured for paid drops. Skipping.');
-      return { success: false, executionId, reason: 'No paid wallets selected' };
+      logger.warn('[CopyMint] No wallets eligible for this copy-mint execution. Skipping.');
+      return { success: false, executionId, reason: 'No eligible wallets selected' };
     }
 
     // Prepare and Pre-sign Transactions across Selected Target Wallets (PARALLEL)

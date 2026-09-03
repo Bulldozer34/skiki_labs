@@ -40,7 +40,8 @@ async function runSnipe({
   quantity,
   gasSettings,
   startTime,
-  recipientAddress
+  recipientAddress,
+  onFiring
 }) {
   if (!wallets || wallets.length === 0) {
     throw new Error('No wallets provided.');
@@ -61,7 +62,8 @@ async function runSnipe({
     quantity,
     gasSettings,
     startTime,
-    recipientAddress
+    recipientAddress,
+    onFiring
   };
 
   const normalizedMode = (mode || 'PUBLIC').toUpperCase();

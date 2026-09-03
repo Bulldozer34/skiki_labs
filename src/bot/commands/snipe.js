@@ -5,6 +5,7 @@ const { runSnipe } = require('../../core/snipeRunner');
 const { riskManager } = require('../../core/riskManager');
 const { buildEndpoints } = require('../../utils/rpcPool');
 const { checkAllWallets } = require('../../engines/eligibilityChecker');
+const { getEthPriceUsd } = require('../../utils/priceFetcher');
 const logger = require('../../utils/logger');
 
 // In-memory wizard sessions: chatId -> { step, data, token, expiresAt }
@@ -534,6 +535,24 @@ async function scheduleDropInBackground(ctx, data, messageId) {
       const isL2 = chainConfig.chainId !== 1;
       const gasSettings = resolveGasPreset(isL2 ? 'turbo' : 'ultra', { isL2 });
 
+      const onFiring = async () => {
+        logger.info(`[Snipe] 🚀 Drop countdown reached T-0! Firing transactions now for ${data.target}`);
+        await client.sendMessage(
+          chatId,
+          [
+            `🚀 <b>FIRING SCHEDULED MINT NOW!</b>`,
+            `━━━━━━━━━━━━━━━━━━━━`,
+            `🎯 <b>Target:</b> <code>${data.target}</code>`,
+            `🔗 <b>Chain:</b> ${chainKey} | <b>Mode:</b> ${data.mode}`,
+            `💼 <b>Wallets:</b> ${wallets.length} burner wallets`,
+            `🔢 <b>Quantity:</b> ${data.quantity} NFT(s) per wallet`,
+            `━━━━━━━━━━━━━━━━━━━━`,
+            `<i>Blasting transactions to mempool across redundant RPCs...</i>`
+          ].join('\n'),
+          { parse_mode: 'HTML' }
+        ).catch(() => {});
+      };
+
       const results = await runSnipe({
         mode: data.mode,
         wallets,
@@ -547,7 +566,8 @@ async function scheduleDropInBackground(ctx, data, messageId) {
         quantity: data.quantity,
         gasSettings,
         startTime: data.startTime,
-        recipientAddress: process.env.RECIPIENT_ADDRESS || null
+        recipientAddress: process.env.RECIPIENT_ADDRESS || null,
+        onFiring
       });
 
       // Cleanup from active snipes once completed
@@ -555,15 +575,20 @@ async function scheduleDropInBackground(ctx, data, messageId) {
 
       const successCount = results.filter(r => r.status === 'SUCCESS').length;
       const failCount = results.length - successCount;
+      const totalGasSpentEth = results.reduce((acc, r) => acc + (parseFloat(r.gasSpentEth) || 0), 0);
+      const ethPrice = await getEthPriceUsd().catch(() => 2500) || 2500;
+      const totalGasSpentUsd = (totalGasSpentEth * ethPrice).toFixed(2);
 
       const lines = [
-        `<b>🎉 Mint Execution Complete</b>`,
+        `<b>🎉 Scheduled Mint Execution Completed!</b>`,
         `━━━━━━━━━━━━━━━━━━━━`,
-        `🎯 <b>Target:</b> <code>${data.target.slice(0, 10)}...</code> (${chainKey})`,
-        `✅ <b>Success:</b> ${successCount}/${wallets.length}`,
+        `🎯 <b>Target:</b> <code>${data.target}</code> (${chainKey})`,
+        `📊 <b>Status:</b> ${successCount === wallets.length ? '🟢 100% SUCCESS' : (successCount > 0 ? '🟡 PARTIAL SUCCESS' : '🔴 FAILED')}`,
+        `✅ <b>Mints Completed:</b> ${successCount}/${wallets.length} wallets`,
+        ...(totalGasSpentEth > 0 ? [`⛽ <b>Gas Spent:</b> <code>${totalGasSpentEth.toFixed(5)} ETH (~$${totalGasSpentUsd} USD)</code>`] : []),
         ...(failCount > 0 ? [`❌ <b>Failed:</b> ${failCount}`] : []),
         `━━━━━━━━━━━━━━━━━━━━`,
-        `<b>Results:</b>`
+        `<b>Transaction Details:</b>`
       ];
 
       results.forEach((r, idx) => {

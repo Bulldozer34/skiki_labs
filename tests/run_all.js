@@ -12,7 +12,8 @@ const testFiles = [
   'test_infra_improvements.js',
   'test_gas_tracker.js',
   'test_seaport_offers.js',
-  'test_allowlist_watchdog.js'
+  'test_allowlist_watchdog.js',
+  'test_drop_tracker.js'
 ];
 
 let failed = false;

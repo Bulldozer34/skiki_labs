@@ -21,29 +21,29 @@ class PnLCardGenerator {
     const isProfitable = (pnlData.netProfitUsd || 0) >= 0;
     const profitSign = isProfitable ? '+' : '';
     const profitFormatted = isProfitable
-      ? `$${Math.round(pnlData.netProfitUsd || 10000)}`
-      : `-$${Math.abs(Math.round(pnlData.netProfitUsd || 0))}`;
+      ? `$${(pnlData.netProfitUsd || 0).toFixed(2)}`
+      : `-$${Math.abs(pnlData.netProfitUsd || 0).toFixed(2)}`;
 
     const topColl = pnlData.topCollections && pnlData.topCollections.length > 0
       ? pnlData.topCollections[0]
       : {
-          collectionName: 'Robinhood Genesis Drop',
-          contractAddress: '0x00005EA00Ac477B1030CE78506496e8C2dE24bf5',
-          whaleLabel: 'Alpha Whale',
-          unitPriceEth: '0.002eth',
-          chain: 'Rh',
-          totalWallets: pnlData.totalWallets || 100,
-          totalMinted: pnlData.totalMinted || 100
+          collectionName: 'Robinhood Portfolio (Clean Slate)',
+          contractAddress: '0x0000000000000000000000000000000000000000',
+          whaleLabel: 'No Mints Yet',
+          unitPriceEth: '0.00eth',
+          chain: 'Robinhood L2',
+          totalWallets: pnlData.totalWallets || 0,
+          totalMinted: pnlData.totalMinted || 0
         };
 
-    const collName = topColl.collectionName || 'Collection name';
-    const contractShort = topColl.contractAddress
+    const collName = topColl.collectionName || 'Robinhood Portfolio';
+    const contractShort = topColl.contractAddress && topColl.contractAddress !== '0x0000000000000000000000000000000000000000'
       ? `${topColl.contractAddress.slice(0, 8)}...${topColl.contractAddress.slice(-6)}`
-      : 'Collection Contract';
-    const chainName = topColl.chain || 'Rh';
-    const walletsCount = topColl.totalWallets || pnlData.totalWallets || 100;
-    const mintedCount = topColl.totalMinted || pnlData.totalMinted || 100;
-    const priceFormatted = topColl.unitPriceEth || `${pnlData.totalCostEth || '0.002'}eth`;
+      : 'Clean State';
+    const chainName = topColl.chain || 'Robinhood L2';
+    const walletsCount = topColl.totalWallets || pnlData.totalWallets || 0;
+    const mintedCount = topColl.totalMinted || pnlData.totalMinted || 0;
+    const priceFormatted = topColl.unitPriceEth || `${pnlData.totalCostEth || '0.00'}eth`;
     const dateStr = new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) + ' UTC';
 
     // 1200x675 Custom Template SVG Card
@@ -166,9 +166,18 @@ class PnLCardGenerator {
     ];
 
     if (topColl) {
-      lines.push(`<b>🏆 Collection:</b> <b>${topColl.collectionName || 'Drop'}</b>`);
+      lines.push(`<b>🏆 Top Drop:</b> <b>${topColl.collectionName || 'Drop'}</b>`);
       lines.push(`• <b>Whale Alpha:</b> <code>${topColl.whaleLabel || 'Tracked Whale'}</code>`);
       lines.push(`• <b>Profit:</b> <code>+${topColl.netProfitEth || '0.00'} ETH (+$${(topColl.netProfitUsd || 0).toFixed(2)})</code>`);
+      lines.push(`━━━━━━━━━━━━━━━━━━━━`);
+    }
+
+    if (pnlData.topCollections && pnlData.topCollections.length > 1) {
+      lines.push(`<b>📦 Individual Mints Breakdown:</b>`);
+      pnlData.topCollections.forEach((c) => {
+        const sign = c.netProfitEth >= 0 ? '+' : '';
+        lines.push(`• <b>${c.collectionName}:</b> ${c.totalMinted} minted | ${c.soldCount} sold | <code>${sign}${c.netProfitEth} ETH (${sign}$${(c.netProfitUsd || 0).toFixed(2)})</code>`);
+      });
       lines.push(`━━━━━━━━━━━━━━━━━━━━`);
     }
 
@@ -183,6 +192,41 @@ class PnLCardGenerator {
 
     lines.push(`<i>Send /sweep to transfer unsold NFTs to cold storage.</i>`);
     return lines.join('\n');
+  }
+
+  /**
+   * Generate a QuickChart dark-mode visual PNG Card URL
+   */
+  static generateQuickChartCardUrl(pnlData) {
+    const isProfitable = (pnlData.netProfitUsd || 0) >= 0;
+    const topColl = pnlData.topCollections && pnlData.topCollections.length > 0 ? pnlData.topCollections[0] : null;
+    const collName = topColl ? (topColl.collectionName || 'Robinhood Drop') : 'Robinhood Portfolio (Clean Slate)';
+    const profitStr = (isProfitable ? '+$' : '-$') + Math.abs(pnlData.netProfitUsd || 0).toFixed(2);
+
+    const chartConfig = {
+      type: 'bar',
+      data: {
+        labels: ['Minted', 'Sold', 'Holdings'],
+        datasets: [{
+          data: [pnlData.totalMinted || 0, pnlData.totalSold || 0, pnlData.holdingCount || 0],
+          backgroundColor: ['#E66700', '#22C55E', '#3B82F6']
+        }]
+      },
+      options: {
+        title: {
+          display: true,
+          text: `${collName} | PnL: ${profitStr} (${pnlData.roiPct || 0}% ROI)`,
+          fontColor: '#FFFFFF',
+          fontSize: 16
+        },
+        legend: { display: false },
+        scales: {
+          yAxes: [{ ticks: { fontColor: '#AAAAAA', beginAtZero: true } }],
+          xAxes: [{ ticks: { fontColor: '#FFFFFF', fontSize: 13 } }]
+        }
+      }
+    };
+    return `https://quickchart.io/chart?bkg=%230d0b08&width=800&height=450&c=${encodeURIComponent(JSON.stringify(chartConfig))}`;
   }
 
   /**

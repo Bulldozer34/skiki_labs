@@ -28,15 +28,45 @@ class TrackedWalletService {
   }
 
   _load() {
+    let list = [];
     try {
       this._ensureStorage();
       const content = fs.readFileSync(STORAGE_FILE, 'utf-8');
       const parsed = JSON.parse(content || '[]');
-      return Array.isArray(parsed) ? parsed : [];
+      list = Array.isArray(parsed) ? parsed : [];
     } catch (err) {
       logger.warn(`Could not load tracked_wallets.json: ${err.message}`);
-      return [];
     }
+
+    // Merge from TRACKED_WALLETS environment variable (for Cloud / Render persistence)
+    const envWallets = (process.env.TRACKED_WALLETS || '').trim();
+    if (envWallets) {
+      const items = envWallets.split(/[\s,]+/).filter(Boolean);
+      for (const item of items) {
+        const [addr, ...labelParts] = item.split(':');
+        if (addr && ethers.isAddress(addr)) {
+          const checksummed = ethers.getAddress(addr);
+          const label = labelParts.join(':') || `Whale-${checksummed.slice(0, 6)}`;
+          const exists = list.some(w => w.address.toLowerCase() === checksummed.toLowerCase());
+          if (!exists) {
+            list.push({
+              address: checksummed,
+              label: label.trim(),
+              active: true,
+              addedAt: Date.now()
+            });
+          }
+        }
+      }
+    }
+
+    return list;
+  }
+
+  exportEnvString() {
+    return this.wallets
+      .map(w => `${w.address}:${(w.label || '').replace(/[,:\s]/g, '_')}`)
+      .join(',');
   }
 
   _save() {
