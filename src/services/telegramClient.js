@@ -124,11 +124,30 @@ class TelegramClient {
    */
   async sendPhoto(chatId, photo, caption = '', options = {}) {
     try {
-      if (typeof photo === 'string') {
+      // Safe truncate caption to Telegram's 1024-character maximum
+      let safeCaption = caption;
+      if (safeCaption && safeCaption.length > 1020) {
+        safeCaption = safeCaption.slice(0, 1017) + '...';
+      }
+
+      // If photo is an HTTP URL, fetch its buffer first so Telegram receives native image binary
+      let photoBuffer = photo;
+      if (typeof photo === 'string' && photo.startsWith('http')) {
+        try {
+          const axios = require('axios');
+          const dl = await axios.get(photo, { responseType: 'arraybuffer', timeout: 8000 });
+          photoBuffer = Buffer.from(dl.data);
+        } catch (fetchErr) {
+          logger.warn(`[TelegramClient] Failed to fetch photo URL, passing URL directly: ${fetchErr.message}`);
+          photoBuffer = photo;
+        }
+      }
+
+      if (typeof photoBuffer === 'string') {
         const payload = {
           chat_id: chatId,
-          photo,
-          caption,
+          photo: photoBuffer,
+          caption: safeCaption,
           parse_mode: options.parse_mode || 'HTML',
           ...options
         };
@@ -137,10 +156,10 @@ class TelegramClient {
       } else {
         const formData = new FormData();
         formData.append('chat_id', String(chatId));
-        const blob = new Blob([photo]);
-        formData.append('photo', blob, 'photo.png');
-        if (caption) {
-          formData.append('caption', caption);
+        const blob = new Blob([photoBuffer]);
+        formData.append('photo', blob, 'pnl_card.png');
+        if (safeCaption) {
+          formData.append('caption', safeCaption);
           formData.append('parse_mode', options.parse_mode || 'HTML');
         }
         if (options.reply_markup) {

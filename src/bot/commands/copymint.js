@@ -207,7 +207,7 @@ async function handleGasMenu(client, chatId, messageId, state) {
 /**
  * Handle Copy-Mint Callback Queries
  */
-async function handleCopyMintCallback(client, chatId, messageId, data, state = {}) {
+async function handleCopyMintCallback(client, chatId, messageId, data, state = {}, cbId = null) {
   // Toggle auto-mint
   if (data === 'cm_toggle_automint') {
     state.automintEnabled = !(state.automintEnabled !== false);
@@ -291,7 +291,7 @@ async function handleCopyMintCallback(client, chatId, messageId, data, state = {
   if (data.startsWith('cm_set_copywallets:')) {
     const rule = data.split(':')[1];
     state.copyMintWallets = rule;
-    await client.answerCallbackQuery(cb.id, { text: `Copy-Mint Wallets set to: ${rule}` }).catch(() => {});
+    if (cbId) await client.answerCallbackQuery(cbId, { text: `Copy-Mint Wallets set to: ${rule}` }).catch(() => {});
     return await handleCopyMintMenu(client, chatId, messageId, state);
   }
 
@@ -309,14 +309,14 @@ async function handleCopyMintCallback(client, chatId, messageId, data, state = {
   // Generate & Download HD Card (with inline Photo and SVG file)
   if (data === 'cm_pnl_card' || data.startsWith('cm_pnl_card_')) {
     const filter = data.startsWith('cm_pnl_card_') ? data.replace('cm_pnl_card_', '') : null;
-    await client.answerCallbackQuery(cb.id, { text: 'Rendering HD PnL Card & Image...' }).catch(() => {});
+    if (cbId) await client.answerCallbackQuery(cbId, { text: 'Rendering HD PnL Card & Image...' }).catch(() => {});
     return await handleCopyMintPnL(client, chatId, null, true, filter);
   }
 
   // Reset PnL
   if (data === 'cm_pnl_reset_confirm') {
     copyMintPnL.reset();
-    await client.answerCallbackQuery(cb.id, { text: '🗑️ PnL records wiped clean!' }).catch(() => {});
+    if (cbId) await client.answerCallbackQuery(cbId, { text: '🗑️ PnL records wiped clean!' }).catch(() => {});
     return await handleCopyMintPnL(client, chatId, messageId);
   }
 

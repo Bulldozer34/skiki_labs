@@ -147,8 +147,26 @@ async function startDaemon() {
 
   // 7. Start Cloud Keep-Alive & Health Check HTTP Server (Zero Card Hosting)
   const http = require('http');
+  const { runLatencyBenchmark } = require('./src/bot/commands/latency');
   const port = process.env.PORT || 3000;
-  const server = http.createServer((req, res) => {
+  const server = http.createServer(async (req, res) => {
+    if (req.url === '/latency' || req.url === '/ping') {
+      try {
+        const benchmark = await runLatencyBenchmark();
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          status: 'online',
+          location: 'Render Cloud (Ohio, US East)',
+          timestamp: new Date().toISOString(),
+          benchmarks: benchmark
+        }, null, 2));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+      return;
+    }
+
     if (req.url === '/health' || req.url === '/') {
       const uptimeSec = Math.floor((Date.now() - daemonState.startTimeMs) / 1000);
       res.writeHead(200, { 'Content-Type': 'application/json' });

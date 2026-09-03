@@ -23,6 +23,7 @@ const {
   handleSetRecipient
 } = require('./commands/copymint');
 const { handleGas } = require('./commands/gas');
+const { handleLatency } = require('./commands/latency');
 const { handleTrackMint, handleTrackedMints, handleUntrackMint } = require('./commands/trackmint');
 const dropTrackerService = require('../services/dropTrackerService');
 const trackedWalletService = require('../services/trackedWalletService');
@@ -230,6 +231,10 @@ class TelegramBot {
         case '/fees':
           await handleGas(ctx);
           break;
+        case '/latency':
+        case '/ping':
+          await handleLatency(ctx);
+          break;
         case '/trackmint':
           await handleTrackMint(ctx);
           break;
@@ -348,8 +353,8 @@ class TelegramBot {
 
       // ─── Copy-Mint & Whale Tracker Callbacks ─────────────────
       if (data.startsWith('cm_')) {
-        await this.client.answerCallbackQuery(cb.id);
-        return await handleCopyMintCallback(this.client, cb.message.chat.id, cb.message.message_id, data, this.state);
+        await this.client.answerCallbackQuery(cb.id).catch(() => {});
+        return await handleCopyMintCallback(this.client, cb.message.chat.id, cb.message.message_id, data, this.state, cb.id);
       }
       if (data.startsWith('tw_')) {
         await this.client.answerCallbackQuery(cb.id);
@@ -383,6 +388,9 @@ class TelegramBot {
       else if (data === 'cmd_gas_refresh') {
         await this.client.answerCallbackQuery(cb.id, { text: 'Refreshing gas...' }).catch(() => {});
         return await handleGas({ client: this.client, chatId: cb.message.chat.id, state: this.state, messageId: cb.message.message_id });
+      } else if (data === 'cmd_ping_refresh') {
+        await this.client.answerCallbackQuery(cb.id, { text: 'Pinging all endpoints...' }).catch(() => {});
+        return await handleLatency({ client: this.client, chatId: cb.message.chat.id, messageId: cb.message.message_id });
       }
       // ─── Sweep Callbacks ────────────────────────────────────
       else if (data.startsWith('sweep_sel:')) {
@@ -485,6 +493,8 @@ class TelegramBot {
       { command: 'generate', description: '✨ Generate burner wallets' },
       { command: 'fund', description: '💸 Auto-distribute ETH from master' },
       { command: 'gas', description: '⛽ Robinhood Chain live gas & fee calculator' },
+      { command: 'ping', description: '📡 Test live network ping to all RPCs & APIs' },
+      { command: 'latency', description: '📡 Detailed latency benchmark from Render VPS' },
       { command: 'trackmint', description: '🎯 Track OpenSea drop phase & get alert before Public' },
       { command: 'trackedmints', description: '📋 List active tracked drops & countdowns' },
       { command: 'copymintwallets', description: '💼 Select wallet numbers for copy-minting' },
