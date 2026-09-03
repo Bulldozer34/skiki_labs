@@ -90,7 +90,7 @@ async function handleLatency(ctx) {
     let icon = '🟢';
     if (r.status !== 'OK') icon = '🔴';
     else if (r.ms > 150) icon = '🔴';
-    else if (r.ms > 60) icon = '🟡';
+    else if (r.ms > 80) icon = '🟡';
 
     const msText = r.status === 'OK' ? `<code>${r.ms}ms</code>` : `<code>${r.status}</code>`;
     return `${icon} <b>${r.name}:</b> ${msText}`;
@@ -111,7 +111,7 @@ async function handleLatency(ctx) {
     `<b>💬 Notification Gateways (Non-blocking):</b>`,
     ...notifyResults.map(formatLine),
     `━━━━━━━━━━━━━━━━━━━━`,
-    `<i>🟢 Ultra-fast (&lt;60ms) | 🟡 Good (60-150ms) | 🔴 Slow (&gt;150ms)</i>`,
+    `<i>🟢 Ultra-fast (&lt;80ms) | 🟡 Good (80-150ms) | 🔴 Slow (&gt;150ms)</i>`,
     `💡 <i>Telegram latency is UI only — mint transactions blast directly to the Sequencer RPC.</i>`
   ];
 

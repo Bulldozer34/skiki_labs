@@ -205,7 +205,7 @@ async function handleSnipeCallback(ctx, action, param) {
       : new ethers.JsonRpcProvider(rpcUrl);
 
     // Fetch live balances for each wallet concurrently
-    const balanceResults = await Promise.all(wallets.map(async (w, i) => {
+    const balanceMap = await Promise.all(wallets.map(async (w, i) => {
       let num = 0;
       try {
         const bal = await provider.getBalance(w.address);
@@ -219,8 +219,8 @@ async function handleSnipeCallback(ctx, action, param) {
       };
     }));
 
-    const fundedCount = balanceResults.filter(b => b.balanceEth > 0).length;
-    wizard.data.balanceMap = balanceResults;
+    const fundedCount = balanceMap.filter(b => b.balanceEth > 0).length;
+    wizard.data.balanceMap = balanceMap;
 
     const keyboard = [
       [
