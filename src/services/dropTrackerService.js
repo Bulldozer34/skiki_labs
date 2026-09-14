@@ -33,7 +33,13 @@ class DropTrackerService {
       this._ensureStorage();
       const content = fs.readFileSync(STORAGE_FILE, 'utf-8');
       const parsed = JSON.parse(content || '[]');
-      return Array.isArray(parsed) ? parsed : [];
+      const list = Array.isArray(parsed) ? parsed : [];
+      const nowSec = Math.floor(Date.now() / 1000);
+      // Automatically discard drops that started more than 12 hours ago
+      return list.filter(d => {
+        if (!d.publicStartTime) return true;
+        return (nowSec - d.publicStartTime) < 43200;
+      });
     } catch (err) {
       logger.warn(`[DropTracker] Could not load tracked_mints.json: ${err.message}`);
       return [];
@@ -236,19 +242,29 @@ class DropTrackerService {
       if (diffSec <= 0 && !drop.alertedLive) {
         drop.alertedLive = true;
         this._save();
-        await this._sendAlert(
-          `🟢 <b>PUBLIC MINT IS NOW LIVE!</b>\n` +
-          `━━━━━━━━━━━━━━━━━━━━\n` +
-          `📦 <b>Collection:</b> <b>${drop.name}</b>\n` +
-          `🚀 <b>Status:</b> <b>Public Stage is OPEN!</b>\n` +
-          `💰 <b>Price:</b> <code>${drop.publicPrice}</code>\n` +
-          `🎯 <b>Contract:</b> <code>${drop.contractAddress || drop.slug}</code>\n` +
-          `━━━━━━━━━━━━━━━━━━━━\n` +
-          `<i>Tap below to snipe immediately across your burner wallets!</i>`,
-          drop,
-          true
-        );
+        // Only send live alert if within 10 minutes of opening (avoid alerting ancient drops)
+        if (diffSec >= -600) {
+          await this._sendAlert(
+            `🟢 <b>PUBLIC MINT IS NOW LIVE!</b>\n` +
+            `━━━━━━━━━━━━━━━━━━━━\n` +
+            `📦 <b>Collection:</b> <b>${drop.name}</b>\n` +
+            `🚀 <b>Status:</b> <b>Public Stage is OPEN!</b>\n` +
+            `💰 <b>Price:</b> <code>${drop.publicPrice}</code>\n` +
+            `🎯 <b>Contract:</b> <code>${drop.contractAddress || drop.slug}</code>\n` +
+            `━━━━━━━━━━━━━━━━━━━━\n` +
+            `<i>Tap below to snipe immediately across your burner wallets!</i>`,
+            drop,
+            true
+          );
+        }
       }
+    }
+
+    // Prune drops older than 12 hours
+    const prevCount = this.trackedDrops.length;
+    this.trackedDrops = this.trackedDrops.filter(d => !d.publicStartTime || (nowSec - d.publicStartTime) < 43200);
+    if (this.trackedDrops.length !== prevCount) {
+      this._save();
     }
   }
 
