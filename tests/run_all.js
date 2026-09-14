@@ -13,7 +13,8 @@ const testFiles = [
   'test_gas_tracker.js',
   'test_seaport_offers.js',
   'test_allowlist_watchdog.js',
-  'test_drop_tracker.js'
+  'test_drop_tracker.js',
+  'test_scheduler_and_abort.js'
 ];
 
 let failed = false;

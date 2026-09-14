@@ -3,6 +3,8 @@
  * @param {number} sec
  * @returns {string}
  */
+const snipePersistence = require('../../core/snipePersistence');
+
 function formatDuration(sec) {
   if (sec <= 0) return 'Immediate / Ready';
   const m = Math.floor(sec / 60);
@@ -100,6 +102,7 @@ async function handleDropCancel(ctx, dropId) {
   }
 
   activeSnipes.delete(dropId);
+  snipePersistence.remove(dropId);
   await client.answerCallbackQuery(callbackQuery.id, { text: 'Drop cancelled successfully.' });
 
   await client.sendMessage(

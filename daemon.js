@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * NFT Mint Bot — 24/7 Telegram Daemon (v4.0)
+ * NFT Mint Bot — 24/7 Telegram Daemon (v4.1)
  *
  * Runs continuously in the background, listening for commands and executing snipes
  * directly from your phone over Telegram.
+ *
+ * v4.1 — Armed snipe persistence, infinite auto-restart, watchdog heartbeat.
  */
 
 require('dotenv').config();
@@ -19,6 +21,7 @@ const TrackerEngine = require('./src/engines/trackerEngine');
 const CopyMintEngine = require('./src/engines/copyMintEngine');
 const trackedWalletService = require('./src/services/trackedWalletService');
 const connectionManager = require('./src/services/connectionManager');
+const snipePersistence = require('./src/core/snipePersistence');
 
 async function startDaemon() {
   console.clear();
@@ -190,9 +193,37 @@ async function startDaemon() {
     logger.speed(`🌐 Cloud Web Health Server active on port ${port} (Ready for 24/7 keep-alive ping)`);
   });
 
-  // 8. Handle Graceful Shutdown
+  // 7b. 24/7 Cloud & Local Keep-Alive Heartbeat (Prevents sleep / idle suspension)
+  const KEEP_ALIVE_INTERVAL_MS = 4 * 60 * 1000;
+  const keepAliveTimer = setInterval(() => {
+    http.get(`http://127.0.0.1:${port}/health`, (res) => {
+      res.resume();
+    }).on('error', () => {});
+    const uptimeM = Math.floor((Date.now() - daemonState.startTimeMs) / 60000);
+    const activeDrops = daemonState.activeSnipes ? daemonState.activeSnipes.size : 0;
+    logger.info(`[KeepAlive Heartbeat] Uptime: ${uptimeM}m | Active Armed Snipes: ${activeDrops} | Daemon awake.`);
+  }, KEEP_ALIVE_INTERVAL_MS);
+  if (keepAliveTimer.unref) keepAliveTimer.unref();
+
+  // 8. Rehydrate Persisted Armed Snipes from Storage
+  try {
+    const { rehydratePersistedSnipes } = require('./src/bot/commands/snipe');
+    const restored = await rehydratePersistedSnipes({
+      client: bot.client,
+      allowedChatId: chatId,
+      state: daemonState
+    });
+    if (restored > 0) {
+      logger.success(`[Daemon] Rehydrated ${restored} armed snipe(s) from persistent storage.`);
+    }
+  } catch (rehydrateErr) {
+    logger.warn(`[Daemon] Could not rehydrate persisted snipes: ${rehydrateErr.message}`);
+  }
+
+  // 9. Handle Graceful Shutdown
   const shutdown = () => {
     logger.info('Received shutdown signal. Stopping daemon...');
+    clearInterval(keepAliveTimer);
     try { server.close(); } catch (e) {}
     trackerEngine.stop();
     bot.stop();
@@ -202,7 +233,7 @@ async function startDaemon() {
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
 
-  // 9. Launch Polling Loop
+  // 10. Launch Polling Loop
   await bot.start();
 }
 

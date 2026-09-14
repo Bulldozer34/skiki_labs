@@ -24,7 +24,7 @@ const { SequencerFeed } = require('../services/sequencerFeed');
  *   Resources the caller must tear down regardless of how this returns.
  */
 async function executePublicMint(config, state) {
-  const { wallets, provider, rpcUrls, endpoints, feedUrl, nftContractAddress, chain: chainConfig, quantity, gasSettings, recipientAddress } = config;
+  const { wallets, provider, rpcUrls, endpoints, feedUrl, nftContractAddress, chain: chainConfig, quantity, gasSettings, recipientAddress, signal } = config;
   const chain = chainConfig;
   let { startTime } = config;
   
@@ -93,7 +93,10 @@ async function executePublicMint(config, state) {
     throw new Error('Public drop has already ended on-chain.');
   }
 
-  if (onChainStartTime > 0) {
+  if (config.forceImmediate || startTime === 1) {
+    startTime = 0;
+    logger.info('Immediate execution requested: proceeding without on-chain delay.');
+  } else if (onChainStartTime > 0) {
     if (onChainStartTime > nowSec) {
       // Future drop on-chain: automatically synchronize if within 15 minutes or if scheduled earlier
       if (!startTime || Math.abs(onChainStartTime - startTime) <= 900 || onChainStartTime > startTime) {
@@ -215,6 +218,7 @@ async function executePublicMint(config, state) {
     deadlineMs,
     leadTimeMs: () => leadTimeMs,
     label: 'Drop',
+    signal,
     milestones: [
       {
         atMs: 15000,
@@ -297,19 +301,23 @@ async function executePublicMint(config, state) {
             connectionManager.preWarmSockets(broadcaster.rpcUrls)
           ]);
 
-          // Calibrate the lead time against the endpoint we will actually write
-          // to. The right lead is one one-way flight, so the transaction touches
-          // the sequencer the instant the drop opens: fire later and a competitor
-          // is ahead of us in the FIFO queue, fire earlier and the contract
-          // reverts NotActive(). That distance is ~120ms from a home connection
-          // and single-digit ms from a host in the sequencer's region, so it has
-          // to be measured rather than assumed.
-          const writeUrl = (broadcaster.endpoints[0] && broadcaster.endpoints[0].url) || null;
-          const rttMs = await connectionManager.measureRoundTripMs(writeUrl, 5);
+          // Calibrate against the fastest live write path from this host. This
+          // races direct sequencer ingress, QuickNode and any private RPC rather
+          // than assuming endpoint order equals network reality.
+          const writeRace = await connectionManager.measureEndpointRace(broadcaster.endpoints, 5);
+          const fastestWrite = writeRace[0] || null;
+          if (writeRace.length) {
+            logger.speed(
+              `Write-path RTT race: ${writeRace.map(e => `${e.label} ${Math.round(e.rttMs)}ms`).join(' | ')}`
+            );
+          } else {
+            logger.warn('Write-path RTT race produced no live samples; using default lead-time.');
+          }
+          const rttMs = fastestWrite ? fastestWrite.rttMs : null;
           const calibration = calibrateLeadTimeMs(rttMs);
           leadTimeMs = calibration.leadTimeMs;
           logger.speed(
-            `Lead time set to ${leadTimeMs}ms (${calibration.source}) — ` +
+            `Lead time set to ${leadTimeMs}ms (${fastestWrite ? fastestWrite.label : calibration.source}) — ` +
             'trigger fires one network flight before the drop opens.'
           );
         }
@@ -364,8 +372,15 @@ async function executePublicMint(config, state) {
         const block = await provider.getBlock('latest').catch(() => null);
         return !!(block && Number(block.timestamp) >= onChainStartTime);
       }
-    } : null
+    } : null,
+    signal
   });
+
+  if (signal && signal.aborted) {
+    const err = new Error('Snipe cancelled by user before broadcast');
+    err.name = 'AbortError';
+    throw err;
+  }
 
   // Multi-RPC FIFO Sequencer Packet Flood
   logger.speed(`>>> ⚡ FIRE! ${broadcaster.burstOffsets.length}-pulse micro-burst across ${broadcaster.rpcUrls.length} node(s) for ${validPrepared.length} wallet(s) (Lead: ${leadTimeMs}ms) <<<`);

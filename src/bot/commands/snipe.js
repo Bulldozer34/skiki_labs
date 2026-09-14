@@ -1,5 +1,5 @@
 const { ethers } = require('ethers');
-const { CHAINS } = require('../../utils/chains');
+const { CHAINS, expandAlchemyKey } = require('../../utils/chains');
 const { resolveGasPreset } = require('../../utils/gasPresets');
 const { runSnipe } = require('../../core/snipeRunner');
 const { riskManager } = require('../../core/riskManager');
@@ -10,6 +10,7 @@ const { resolveCollection } = require('../../utils/resolver');
 const CollectionService = require('../../services/collectionService');
 const connectionManager = require('../../services/connectionManager');
 const logger = require('../../utils/logger');
+const snipePersistence = require('../../core/snipePersistence');
 
 // In-memory wizard sessions: chatId -> { step, data, token, expiresAt }
 const activeWizards = new Map();
@@ -631,10 +632,10 @@ async function executeEligibilityCheckFromTelegram(ctx, data, messageId) {
 /**
  * Schedule Drop as Concurrent Background Task
  */
-async function scheduleDropInBackground(ctx, data, messageId) {
+async function scheduleDropInBackground(ctx, data, messageId = null, existingDropId = null) {
   const { client, chatId, state } = ctx;
 
-  const dropId = `drop_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  const dropId = existingDropId || data.id || `drop_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
   const chainKey = data.chainKey || 'ROBINHOOD';
   const chainConfig = CHAINS[chainKey] || CHAINS.ROBINHOOD;
 
@@ -644,56 +645,75 @@ async function scheduleDropInBackground(ctx, data, messageId) {
     : allWallets;
 
   if (wallets.length === 0) {
-    return await client.sendMessage(chatId, '❌ Cannot execute: No wallets selected.');
+    if (chatId) await client.sendMessage(chatId, '❌ Cannot execute: No wallets selected.').catch(() => {});
+    return;
   }
 
   // Register in active background jobs
+  const abortController = new AbortController();
   state.activeSnipes = state.activeSnipes || new Map();
   const dropJob = {
     id: dropId,
+    abortController,
     target: data.target,
     contractAddress: data.contractAddress,
     collectionName: data.collectionName,
+    collectionSlug: data.collectionSlug,
     chainKey,
     mode: data.mode,
     quantity: data.quantity,
     startTime: data.startTime,
     walletsCount: wallets.length,
+    selectedWallets: wallets,
+    selectedWalletAddresses: wallets.map(w => w.address),
     postMintLabel: data.postMintLabel || '📦 Keep in Wallets',
-    createdAt: Date.now()
+    postMintConfig: data.postMintConfig || null,
+    recipientAddress: data.recipientAddress || state.recipientAddress || process.env.RECIPIENT_ADDRESS || null,
+    walletSelectionLabel: data.walletSelectionLabel,
+    createdAt: data.createdAt || Date.now()
   };
   state.activeSnipes.set(dropId, dropJob);
+
+  // Persist to disk so the armed snipe survives daemon restarts
+  snipePersistence.save(state.activeSnipes);
 
   const displayTarget = data.collectionName
     ? `<b>${data.collectionName}</b>`
     : `<code>${data.target}</code>`;
 
-  await client.editMessageText(
-    chatId,
-    messageId,
-    [
-      `⚡ <b>Sniper Armed & Scheduled in Background!</b>`,
-      `━━━━━━━━━━━━━━━━━━━━`,
-      `🎯 <b>Target:</b> ${displayTarget}`,
-      ...(data.contractAddress ? [`📄 <b>Contract:</b> <code>${data.contractAddress}</code>`] : []),
-      `🔗 <b>Chain:</b> ${chainKey} | <b>Mode:</b> ${data.mode}`,
-      `💼 <b>Wallets:</b> ${data.walletSelectionLabel || `${wallets.length} Wallets`}`,
-      `🔢 <b>Quantity:</b> ${data.quantity} NFT(s) per wallet`,
-      `🎁 <b>Post-Mint:</b> ${data.postMintLabel || '📦 Keep in Wallets'}`,
-      `━━━━━━━━━━━━━━━━━━━━`,
-      `<i>The daemon will monitor drop clock and execute at T-0. Send /drops to view or cancel.</i>`
-    ].join('\n'),
-    { parse_mode: 'HTML' }
-  );
+  const confirmLines = [
+    `⚡ <b>Sniper Armed & Scheduled in Background!</b>`,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    `🎯 <b>Target:</b> ${displayTarget}`,
+    ...(data.contractAddress ? [`📄 <b>Contract:</b> <code>${data.contractAddress}</code>`] : []),
+    `🔗 <b>Chain:</b> ${chainKey} | <b>Mode:</b> ${data.mode}`,
+    `💼 <b>Wallets:</b> ${data.walletSelectionLabel || `${wallets.length} Wallets`}`,
+    `🔢 <b>Quantity:</b> ${data.quantity} NFT(s) per wallet`,
+    `🎁 <b>Post-Mint:</b> ${data.postMintLabel || '📦 Keep in Wallets'}`,
+    `━━━━━━━━━━━━━━━━━━━━`,
+    `<i>The daemon will monitor drop clock and execute at T-0. Send /drops to view or cancel.</i>`
+  ];
+
+  if (messageId && chatId) {
+    await client.editMessageText(chatId, messageId, confirmLines.join('\n'), { parse_mode: 'HTML' }).catch(() => {});
+  } else if (!data.silent && chatId) {
+    await client.sendMessage(chatId, confirmLines.join('\n'), { parse_mode: 'HTML' }).catch(() => {});
+  }
 
   // Background Async Execution
   (async () => {
     try {
-      const rpcUrl = chainConfig.defaultRpc || 'https://rpc.mainnet.chain.robinhood.com';
+      const alchemyUrl = process.env.ALCHEMY_KEY ? expandAlchemyKey(process.env.ALCHEMY_KEY, chainConfig) : null;
+      const primaryRpc = alchemyUrl || chainConfig.defaultRpc || 'https://rpc.mainnet.chain.robinhood.com';
       const provider = connectionManager?.createEthersProvider
-        ? connectionManager.createEthersProvider(rpcUrl, chainConfig.chainId)
-        : new ethers.JsonRpcProvider(rpcUrl);
-      const endpointData = buildEndpoints(chainConfig, rpcUrl);
+        ? connectionManager.createEthersProvider(primaryRpc, chainConfig.chainId)
+        : new ethers.JsonRpcProvider(primaryRpc);
+
+      // Force enableQuickNode: true so private VIP endpoint is always engaged for hyped drops
+      const endpointData = buildEndpoints(chainConfig, primaryRpc, { enableQuickNode: true });
+
+      // Pre-warm sockets across all high-speed endpoints immediately
+      connectionManager.preWarmSockets(endpointData.urls).catch(() => {});
 
       const isL2 = chainConfig.chainId !== 1;
       const gasSettings = resolveGasPreset(isL2 ? 'turbo' : 'ultra', { isL2 });
@@ -756,11 +776,13 @@ async function scheduleDropInBackground(ctx, data, messageId) {
         startTime: data.startTime,
         postMintConfig: data.postMintConfig || null,
         recipientAddress: data.recipientAddress || state.recipientAddress || process.env.RECIPIENT_ADDRESS || null,
-        onFiring
+        onFiring,
+        signal: abortController.signal
       });
 
       // Cleanup from active snipes once completed
       state.activeSnipes.delete(dropId);
+      snipePersistence.remove(dropId);
 
       const successCount = results.filter(r => r.status === 'SUCCESS').length;
       const failCount = results.filter(r => r.status !== 'SUCCESS').length;
@@ -787,11 +809,20 @@ async function scheduleDropInBackground(ctx, data, messageId) {
       lines.push(`━━━━━━━━━━━━━━━━━━━━`);
       lines.push(`<i>All mint history recorded to disk.</i>`);
 
-      await client.sendMessage(chatId, lines.join('\n'), { parse_mode: 'HTML' }).catch(() => {});
+      if (chatId) {
+        await client.sendMessage(chatId, lines.join('\n'), { parse_mode: 'HTML' }).catch(() => {});
+      }
     } catch (err) {
       state.activeSnipes.delete(dropId);
+      snipePersistence.remove(dropId);
+      if (err.name === 'AbortError' || err.message?.includes('cancelled')) {
+        logger.info(`[Snipe] Background drop cancelled cleanly for ${data.target}`);
+        return;
+      }
       logger.error(`[Snipe] Background drop failed for ${data.target}: ${err.message}`);
-      await client.sendMessage(chatId, `❌ Snipe failed for <code>${data.target}</code>: ${err.message}`, { parse_mode: 'HTML' }).catch(() => {});
+      if (chatId) {
+        await client.sendMessage(chatId, `❌ Snipe failed for <code>${data.target}</code>: ${err.message}`, { parse_mode: 'HTML' }).catch(() => {});
+      }
     }
   })();
 }
@@ -826,23 +857,58 @@ function handlePendingInput(ctx) {
   }
 
   if (wizard.step === 'AWAIT_TIME') {
-    // Parse time: e.g. "15:30:00" or "10m" or "5s"
     let targetEpochSec = 0;
     const now = new Date();
+    const lower = text.toLowerCase();
 
-    if (text.endsWith('m')) {
-      const mins = parseFloat(text.replace('m', ''));
-      targetEpochSec = Math.floor(Date.now() / 1000) + Math.round(mins * 60);
-    } else if (text.endsWith('s')) {
-      const secs = parseFloat(text.replace('s', ''));
-      targetEpochSec = Math.floor(Date.now() / 1000) + Math.round(secs);
+    if (lower.endsWith('h')) {
+      const hours = parseFloat(lower.replace('h', ''));
+      if (!isNaN(hours) && hours > 0) {
+        targetEpochSec = Math.floor(Date.now() / 1000) + Math.round(hours * 3600);
+      }
+    } else if (lower.endsWith('m')) {
+      const mins = parseFloat(lower.replace('m', ''));
+      if (!isNaN(mins) && mins > 0) {
+        targetEpochSec = Math.floor(Date.now() / 1000) + Math.round(mins * 60);
+      }
+    } else if (lower.endsWith('s')) {
+      const secs = parseFloat(lower.replace('s', ''));
+      if (!isNaN(secs) && secs > 0) {
+        targetEpochSec = Math.floor(Date.now() / 1000) + Math.round(secs);
+      }
     } else if (text.includes(':')) {
       const parts = text.split(':').map(Number);
-      const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parts[0], parts[1], parts[2] || 0);
-      if (targetDate.getTime() < now.getTime()) {
-        targetDate.setDate(targetDate.getDate() + 1); // tomorrow
+      if (!parts.some(isNaN) && parts.length >= 2) {
+        const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parts[0], parts[1], parts[2] || 0);
+        if (targetDate.getTime() < now.getTime()) {
+          targetDate.setDate(targetDate.getDate() + 1); // tomorrow
+        }
+        targetEpochSec = Math.floor(targetDate.getTime() / 1000);
       }
-      targetEpochSec = Math.floor(targetDate.getTime() / 1000);
+    } else {
+      const num = Number(text);
+      if (!isNaN(num) && num > 1e8) {
+        targetEpochSec = num > 1e11 ? Math.floor(num / 1000) : Math.floor(num);
+      } else {
+        const parsedDate = new Date(text).getTime();
+        if (!isNaN(parsedDate) && parsedDate > 0) {
+          targetEpochSec = Math.floor(parsedDate / 1000);
+        }
+      }
+    }
+
+    if (!targetEpochSec || targetEpochSec <= 0) {
+      ctx.client.sendMessage(
+        ctx.chatId,
+        `❌ <b>Invalid Time Format:</b> <code>${text}</code>\n\n` +
+        `Please provide a valid time format:\n` +
+        `• Minutes / Seconds / Hours: <code>10m</code>, <code>30s</code>, <code>1h</code>\n` +
+        `• Clock time: <code>15:30:00</code> or <code>15:30</code>\n` +
+        `• Unix Epoch: <code>1726350000</code>\n` +
+        `• ISO Date: <code>2026-09-15T15:30:00Z</code>`,
+        { parse_mode: 'HTML' }
+      );
+      return true;
     }
 
     wizard.data.startTime = targetEpochSec;
@@ -854,8 +920,64 @@ function handlePendingInput(ctx) {
   return false;
 }
 
+/**
+ * Rehydrate persisted snipes from disk on daemon boot / restart.
+ * @param {object} ctx Context with client, allowedChatId, state
+ * @returns {Promise<number>} Count of rehydrated snipes
+ */
+async function rehydratePersistedSnipes(ctx) {
+  const { client, allowedChatId, state } = ctx;
+  const persisted = snipePersistence.load();
+  if (!persisted || persisted.length === 0) return 0;
+
+  logger.info(`[SnipePersistence] Found ${persisted.length} persisted drop(s) on disk. Re-arming...`);
+
+  let restoredCount = 0;
+  for (const dropData of persisted) {
+    // Avoid duplicate scheduling
+    if (state.activeSnipes && state.activeSnipes.has(dropData.id)) {
+      continue;
+    }
+
+    // Reconnect wallet instances from state.wallets
+    let selectedWallets = [];
+    if (dropData.selectedWalletAddresses && Array.isArray(dropData.selectedWalletAddresses)) {
+      const addressSet = new Set(dropData.selectedWalletAddresses.map(a => a.toLowerCase()));
+      selectedWallets = (state.wallets || []).filter(w => addressSet.has(w.address.toLowerCase()));
+    }
+    if (selectedWallets.length === 0) {
+      selectedWallets = state.wallets || [];
+    }
+    dropData.selectedWallets = selectedWallets;
+    dropData.silent = true;
+
+    // Re-arm background execution with existing drop ID
+    scheduleDropInBackground({
+      client,
+      chatId: allowedChatId,
+      state
+    }, dropData, null, dropData.id);
+
+    restoredCount++;
+  }
+
+  if (restoredCount > 0 && allowedChatId && client) {
+    const text = [
+      `🔄 <b>Daemon Rehydrated ${restoredCount} Armed Snipe(s)!</b>`,
+      `━━━━━━━━━━━━━━━━━━━━`,
+      `Your drop(s) survived daemon restart and remain armed in the background.`,
+      `Send /drops to view active timers.`
+    ].join('\n');
+    await client.sendMessage(allowedChatId, text, { parse_mode: 'HTML' }).catch(() => {});
+  }
+
+  return restoredCount;
+}
+
 module.exports = {
   handleSnipe,
   handleSnipeCallback,
-  handlePendingInput
+  handlePendingInput,
+  scheduleDropInBackground,
+  rehydratePersistedSnipes
 };

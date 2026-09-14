@@ -66,33 +66,43 @@ const FAR_RANGE_TICK_MS = 1000;
  * @returns {number}
  */
 function resolveLeadTimeMs() {
-  return Math.max(0, parseInt(process.env.SNIPER_LEAD_TIME_MS || '35', 10));
+  const raw = (process.env.SNIPER_LEAD_TIME_MS || '').trim().toLowerCase();
+  if (raw && raw !== 'auto') {
+    const parsed = parseInt(raw, 10);
+    if (Number.isFinite(parsed) && parsed >= 0) return parsed;
+  }
+  return 15;
 }
 
 /** Bounds on a calibrated lead time, so a freak measurement can't fire wild. */
-const MIN_CALIBRATED_LEAD_MS = 5;
+const MIN_CALIBRATED_LEAD_MS = 3;
 const MAX_CALIBRATED_LEAD_MS = 400;
 
 /**
  * Turn a measured round-trip into a lead time.
  *
  * Half the round-trip is the one-way flight, which is the distance we need to
- * cover. An explicit `SNIPER_LEAD_TIME_MS` always wins — if the operator has
- * measured their own path, that beats an inference.
+ * cover. If SNIPER_LEAD_TIME_MS is explicitly set to a number (not 'auto'), that
+ * override wins. When set to 'auto' or empty, live RTT calibration takes effect.
  *
  * @param {number|null} roundTripMs Median RTT to the broadcast endpoint
  * @returns {{leadTimeMs: number, source: string}}
  */
 function calibrateLeadTimeMs(roundTripMs) {
-  if ((process.env.SNIPER_LEAD_TIME_MS || '').trim()) {
-    return { leadTimeMs: resolveLeadTimeMs(), source: 'SNIPER_LEAD_TIME_MS' };
+  const explicit = (process.env.SNIPER_LEAD_TIME_MS || '').trim().toLowerCase();
+  if (explicit && explicit !== 'auto') {
+    const parsed = parseInt(explicit, 10);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      return { leadTimeMs: parsed, source: 'SNIPER_LEAD_TIME_MS override' };
+    }
   }
   if (!Number.isFinite(roundTripMs) || roundTripMs <= 0) {
     return { leadTimeMs: resolveLeadTimeMs(), source: 'default (probe failed)' };
   }
-  const oneWay = Math.round(roundTripMs / 2);
+  // Half RTT is the one-way flight time. Add 1ms buffer so packet touches sequencer NIC right as block opens
+  const oneWay = Math.ceil(roundTripMs / 2) + 1;
   const clamped = Math.min(MAX_CALIBRATED_LEAD_MS, Math.max(MIN_CALIBRATED_LEAD_MS, oneWay));
-  return { leadTimeMs: clamped, source: `measured ${Math.round(roundTripMs)}ms RTT` };
+  return { leadTimeMs: clamped, source: `auto-calibrated (${Math.round(roundTripMs)}ms RTT -> ${clamped}ms lead)` };
 }
 
 /** Memoized so the attempt and its log line happen once per process. */
@@ -153,6 +163,24 @@ function raiseProcessPriority() {
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function abortableSleep(ms, signal) {
+  if (!signal) return sleep(ms);
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      const err = new Error('Snipe countdown cancelled by user');
+      err.name = 'AbortError';
+      return reject(err);
+    }
+    const timer = setTimeout(resolve, ms);
+    signal.addEventListener('abort', () => {
+      clearTimeout(timer);
+      const err = new Error('Snipe countdown cancelled by user');
+      err.name = 'AbortError';
+      reject(err);
+    }, { once: true });
+  });
 }
 
 /**
@@ -241,7 +269,8 @@ async function waitForDropWindow({
   earlyTrigger = null,
   leadTimeMs = null,
   spinWindowMs = DEFAULT_SPIN_WINDOW_MS,
-  label = 'Drop'
+  label = 'Drop',
+  signal = null
 } = {}) {
   // Re-read every pass: a milestone may calibrate this mid-countdown, and the
   // fire instant has to move with it.
@@ -285,6 +314,12 @@ async function waitForDropWindow({
   };
 
   for (;;) {
+    if (signal && signal.aborted) {
+      const err = new Error('Snipe countdown cancelled by user');
+      err.name = 'AbortError';
+      throw err;
+    }
+
     let now = Date.now();
     const remainingMs = deadlineMs - now;
 
@@ -342,7 +377,7 @@ async function waitForDropWindow({
       `\r${chalk.blue('[timer]')} ${label} starts in ` +
       `${chalk.yellow(logger.formatDuration((deadlineMs - now) / 1000, true))}...    `
     );
-    await sleep(nextTickMs({ now, deadlineMs, targetFireMs, spinWindowMs, milestones: ladder, done, earlyTrigger }));
+    await abortableSleep(nextTickMs({ now, deadlineMs, targetFireMs, spinWindowMs, milestones: ladder, done, earlyTrigger }), signal);
   }
 }
 

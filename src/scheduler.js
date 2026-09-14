@@ -2,9 +2,29 @@ const CollectionService = require('./services/collectionService');
 const logger = require('./utils/logger');
 
 /**
+ * Safely parse timestamps in seconds, milliseconds, numeric strings, or ISO dates
+ * @param {string|number} val
+ * @returns {number|null} Timestamp in seconds
+ */
+function parseTimeSec(val) {
+  if (val === null || val === undefined || val === '') return null;
+  if (typeof val === 'number') {
+    return val > 1e11 ? Math.floor(val / 1000) : Math.floor(val);
+  }
+  const num = Number(val);
+  if (!isNaN(num) && num > 0) {
+    return num > 1e11 ? Math.floor(num / 1000) : Math.floor(num);
+  }
+  const dt = new Date(val).getTime();
+  return !isNaN(dt) && dt > 0 ? Math.floor(dt / 1000) : null;
+}
+
+/**
  * Auto-scheduler that polls OpenSea for drop schedule updates
  */
 const Scheduler = {
+  parseTimeSec,
+
   /**
    * Monitor drop start time until mint opens, adapting if the creator delays or updates the time
    * @param {string} slug 
@@ -41,14 +61,17 @@ const Scheduler = {
       failCount = 0;
 
       const targetStage = dropInfo.stages[stageIndex] || dropInfo.stages[0];
-      const startTimeSeconds = Math.floor(new Date(targetStage.startTime).getTime() / 1000);
+      const startTimeSeconds = parseTimeSec(targetStage.startTime);
+      if (!startTimeSeconds) {
+        throw new Error(`Could not parse valid start time for stage "${targetStage.name}": ${targetStage.startTime}`);
+      }
       const now = Math.floor(Date.now() / 1000);
 
       if (lastStartTime === null || lastStartTime !== startTimeSeconds) {
         lastStartTime = startTimeSeconds;
         const remaining = startTimeSeconds - now;
         if (remaining > 0) {
-          logger.timer(`[Schedule] Stage "${targetStage.name}" set to start at: ${new Date(targetStage.startTime).toLocaleString()} (in ${logger.formatDuration(remaining)})`);
+          logger.timer(`[Schedule] Stage "${targetStage.name}" set to start at: ${new Date(startTimeSeconds * 1000).toLocaleString()} (in ${logger.formatDuration(remaining)})`);
         } else {
           logger.success(`[Schedule] Stage "${targetStage.name}" is already LIVE!`);
           return startTimeSeconds;

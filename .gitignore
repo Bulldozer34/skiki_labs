@@ -19,6 +19,8 @@ npm-debug.log*
 mint-history.json
 sales-history.json
 risk-state.json
+data/armed_snipes.json
+data/
 
 # Dependencies & OS
 node_modules/

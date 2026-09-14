@@ -455,6 +455,54 @@ class ConnectionManager {
   }
 
   /**
+   * Measure every write-capable RPC path and return them fastest-first.
+   *
+   * On Robinhood Chain this is the factual answer to "sequencer or QuickNode":
+   * both are measured from the running host over the warmed socket pool, then
+   * the mint engine calibrates its lead time from the lowest live RTT.
+   *
+   * @param {Array<string|{url: string, label?: string}>} endpoints
+   * @param {number} [samples=5]
+   * @returns {Promise<Array<{url: string, label: string, rttMs: number}>>}
+   */
+  async measureEndpointRace(endpoints, samples = 5) {
+    const seen = new Set();
+    const candidates = [];
+
+    for (const entry of endpoints || []) {
+      const url = typeof entry === 'string' ? entry : (entry && entry.url);
+      if (!url || seen.has(url)) continue;
+      seen.add(url);
+      candidates.push({
+        url,
+        label: (typeof entry === 'object' && entry && entry.label) || ConnectionManager.maskEndpoint(url)
+      });
+    }
+
+    const measured = await Promise.all(candidates.map(async (endpoint) => ({
+      ...endpoint,
+      rttMs: await this.measureRoundTripMs(endpoint.url, samples)
+    })));
+
+    return measured
+      .filter(endpoint => Number.isFinite(endpoint.rttMs) && endpoint.rttMs > 0)
+      .sort((a, b) => a.rttMs - b.rttMs);
+  }
+
+  /**
+   * Redact provider keys while keeping logs useful.
+   * @param {string} url
+   * @returns {string}
+   */
+  static maskEndpoint(url) {
+    try {
+      return new URL(url).hostname;
+    } catch (err) {
+      return String(url || '').slice(0, 40);
+    }
+  }
+
+  /**
    * Pre-resolve all hostnames to IPv4 addresses into memory cache
    * Completely eliminates 40-80ms DNS resolution stalls during drop time
    * @param {string[]} urls
@@ -496,5 +544,4 @@ ConnectionManager.WS_SAME_HOST_PROVIDERS = [
 ];
 
 module.exports = new ConnectionManager();
-
 

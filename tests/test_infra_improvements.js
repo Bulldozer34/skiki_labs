@@ -55,6 +55,29 @@ async function run() {
     assert(connectionManager.httpsAgent !== null, 'Keep-Alive agent must exist');
   });
 
+  await test('ConnectionManager: measureEndpointRace returns fastest write path first', async () => {
+    const originalMeasure = connectionManager.measureRoundTripMs.bind(connectionManager);
+    connectionManager.measureRoundTripMs = async (url) => {
+      if (url.includes('quicknode')) return 9;
+      if (url.includes('sequencer')) return 14;
+      return null;
+    };
+
+    try {
+      const race = await connectionManager.measureEndpointRace([
+        { url: 'https://sequencer.mainnet.chain.robinhood.com', label: 'sequencer' },
+        { url: 'https://example.quicknode.pro/abc', label: 'quicknode-vip' },
+        { url: 'https://offline.example', label: 'offline' }
+      ], 1);
+
+      assert.strictEqual(race.length, 2, 'Only live measured endpoints should be returned');
+      assert.strictEqual(race[0].label, 'quicknode-vip', 'Fastest endpoint should be first');
+      assert.strictEqual(race[1].label, 'sequencer', 'Slower live endpoint should follow');
+    } finally {
+      connectionManager.measureRoundTripMs = originalMeasure;
+    }
+  });
+
   // 4. WalletService empty balance safety
   await test('WalletService: checkBalances handles empty array safely', async () => {
     const dummyProvider = connectionManager.createEthersProvider('https://rpc.mainnet.chain.robinhood.com', 4663);

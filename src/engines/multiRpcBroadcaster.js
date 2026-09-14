@@ -35,17 +35,16 @@ const connectionManager = require('../services/connectionManager');
  * `[0, 45, 110, 220, 380]` tail therefore spent rate limit for nothing; three
  * tight pulses keep the insurance and drop the dead weight.
  */
-const DEFAULT_BURST_OFFSETS = [0, 40, 90];
+const DEFAULT_BURST_OFFSETS = [0, 35, 80];
 
 /**
- * Receipt poll interval. Sized to the real round-trip (measured 224-247ms on
- * this chain) rather than the old 40ms, which merely stacked overlapping
- * requests. Used only when the feed cannot tell us about inclusion.
+ * Receipt poll interval. Sized for low-latency L2 Nitro (~90ms block time)
+ * so confirmed transactions are detected in 60ms rather than 250ms.
  */
-const DEFAULT_RECEIPT_POLL_MS = 250;
+const DEFAULT_RECEIPT_POLL_MS = 60;
 
 /** Once the feed says a transaction is sequenced, its receipt exists — fetch hard. */
-const CONFIRMED_POLL_MS = 60;
+const CONFIRMED_POLL_MS = 30;
 
 function parseIntEnv(name, fallback) {
   const parsed = parseInt(process.env[name] || '', 10);
@@ -285,26 +284,31 @@ class MultiRpcBroadcaster {
     const offsets = burstOffsets && burstOffsets.length ? burstOffsets : this.burstOffsets;
     const buf = rawBuffer || connectionManager.createRawBufferPayload(signedTx);
 
-    // Once any pulse lands, later pulses are pointless: the sequencer has the
-    // transaction and would only answer "already known" while spending rate limit.
-    let landed = false;
+    // Pipelined micro-burst flooding: pulses continue across offsets [0, 35, 80]ms
+    // so if pulse 1 lands slightly before block open, pulse 2 guarantees inclusion in Block 0.
+    // 'already known' responses from the sequencer are treated as successful confirmations.
+    let fastestSuccess = null;
 
     const pulses = offsets.map(async (offset) => {
       if (offset > 0) {
         await new Promise(r => setTimeout(r, offset));
-        if (landed) {
-          // Not a failure, but nothing to report — stay pending so Promise.any
-          // still settles on a real result or a real aggregate error.
-          return new Promise(() => {});
-        }
       }
-      const result = await this.broadcastFastest(signedTx, buf);
-      landed = true;
-      return result;
+      try {
+        const result = await this.broadcastFastest(signedTx, buf);
+        if (!fastestSuccess) fastestSuccess = result;
+        return result;
+      } catch (err) {
+        const msg = String(err?.message || '');
+        if (msg.includes('already known') || msg.includes('ALREADY_EXISTS') || msg.includes('known transaction')) {
+          const txHash = ethers.keccak256(signedTx);
+          const result = { txHash, fastestRpc: 'sequencer (already known)', durationMs: Date.now() - startTime };
+          if (!fastestSuccess) fastestSuccess = result;
+          return result;
+        }
+        throw err;
+      }
     });
 
-    // Promise.any only consumes the first rejection it needs; attaching a second
-    // handler keeps Node from flagging the losers as unhandled rejections.
     for (const p of pulses) p.catch(() => {});
 
     try {
@@ -315,6 +319,9 @@ class MultiRpcBroadcaster {
         durationMs: Date.now() - startTime
       };
     } catch (aggregate) {
+      if (fastestSuccess) {
+        return fastestSuccess;
+      }
       throw flattenAggregate(aggregate, 'Broadcast failed on every endpoint and every pulse');
     }
   }

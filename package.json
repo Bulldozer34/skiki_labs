@@ -7,10 +7,10 @@
     "nft-mint-bot": "./cli.js"
   },
   "scripts": {
-    "start": "node daemon.js",
+    "start": "node --max-semi-space-size=64 --expose-gc daemon.js",
     "cli": "node cli.js",
     "dev": "node cli.js",
-    "daemon": "node daemon.js",
+    "daemon": "node --max-semi-space-size=64 --expose-gc daemon.js",
     "test": "node tests/run_all.js"
   },
   "keywords": [

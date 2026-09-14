@@ -231,7 +231,7 @@ async function fetchAllCalldata(wallets, config, authHeadersByAddress, fallbackA
  *   Resources the caller must tear down regardless of how this returns.
  */
 async function executeAllowlistMint(config, state) {
-  const { wallets, provider, rpcUrls, endpoints, feedUrl, nftContractAddress, chain: chainConfig, quantity, gasSettings, recipientAddress } = config;
+  const { wallets, provider, rpcUrls, endpoints, feedUrl, nftContractAddress, chain: chainConfig, quantity, gasSettings, recipientAddress, signal } = config;
   const chain = chainConfig;
   let { startTime } = config;
 
@@ -325,7 +325,7 @@ async function executeAllowlistMint(config, state) {
   let calldataFetchedAtMs = 0;
   let preparedTxs = null;
   let gasFees = null;
-  const deadlineMs = startTime ? startTime * 1000 : 0;
+  const deadlineMs = (config.forceImmediate || startTime === 1) ? 0 : (startTime ? startTime * 1000 : 0);
   // Replaced at T-5s by a value measured on the live write path, unless the
   // operator pinned SNIPER_LEAD_TIME_MS.
   let leadTimeMs = resolveLeadTimeMs();
@@ -464,6 +464,7 @@ async function executeAllowlistMint(config, state) {
     deadlineMs,
     leadTimeMs: () => leadTimeMs,
     label: 'Allowlist mint',
+    signal,
     milestones: [
       {
         atMs: 30000,
@@ -531,15 +532,23 @@ async function executeAllowlistMint(config, state) {
             connectionManager.preWarmSockets(targets)
           ]);
 
-          // Calibrate the lead time against the endpoint we will actually write
-          // to. The right lead is one one-way flight, so the transaction touches
-          // the sequencer the instant the drop opens.
-          const writeUrl = (broadcaster.endpoints[0] && broadcaster.endpoints[0].url) || null;
-          const rttMs = await connectionManager.measureRoundTripMs(writeUrl, 5);
+          // Calibrate against the fastest live write path from this host. This
+          // races direct sequencer ingress, QuickNode and any private RPC rather
+          // than assuming endpoint order equals network reality.
+          const writeRace = await connectionManager.measureEndpointRace(broadcaster.endpoints, 5);
+          const fastestWrite = writeRace[0] || null;
+          if (writeRace.length) {
+            logger.speed(
+              `Write-path RTT race: ${writeRace.map(e => `${e.label} ${Math.round(e.rttMs)}ms`).join(' | ')}`
+            );
+          } else {
+            logger.warn('Write-path RTT race produced no live samples; using default lead-time.');
+          }
+          const rttMs = fastestWrite ? fastestWrite.rttMs : null;
           const calibration = calibrateLeadTimeMs(rttMs);
           leadTimeMs = calibration.leadTimeMs;
           logger.speed(
-            `Lead time set to ${leadTimeMs}ms (${calibration.source}) — ` +
+            `Lead time set to ${leadTimeMs}ms (${fastestWrite ? fastestWrite.label : calibration.source}) — ` +
             'trigger fires one network flight before the drop opens.'
           );
         }
@@ -635,8 +644,15 @@ async function executeAllowlistMint(config, state) {
         const block = await provider.getBlock('latest').catch(() => null);
         return !!(block && Number(block.timestamp) >= startTime);
       }
-    } : null
+    } : null,
+    signal
   });
+
+  if (signal && signal.aborted) {
+    const err = new Error('Snipe cancelled by user before broadcast');
+    err.name = 'AbortError';
+    throw err;
+  }
 
   // Slow path — the drop was already live, or calldata never arrived before the
   // trigger. Everything the warmup ladder skipped happens here instead.
@@ -681,6 +697,12 @@ async function executeAllowlistMint(config, state) {
   }
 
   // 6. Parallel Multi-RPC 5-Pulse Burst Broadcast
+  if (signal && signal.aborted) {
+    const err = new Error('Allowlist snipe cancelled by user before broadcast');
+    err.name = 'AbortError';
+    throw err;
+  }
+
   logger.speed(`>>> ⚡ FIRE! 5-Pulse Micro-Burst Storm across ${broadcaster.rpcUrls.length} RPC node(s) (Lead: ${leadTimeMs}ms) <<<`);
   if (typeof config.onFiring === 'function') {
     try { config.onFiring(); } catch {}
