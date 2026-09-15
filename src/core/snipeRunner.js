@@ -42,6 +42,7 @@ async function runSnipe({
   startTime,
   recipientAddress,
   onFiring,
+  onAlert,
   signal,
   postMintConfig
 }) {
@@ -66,6 +67,7 @@ async function runSnipe({
     startTime,
     recipientAddress,
     onFiring,
+    onAlert,
     signal,
     postMintConfig
   };

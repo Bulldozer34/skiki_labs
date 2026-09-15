@@ -214,167 +214,284 @@ async function executePublicMint(config, state) {
 
   await Promise.all(validPrepared.map(p => presignBackups(p)));
 
-  const dropTrigger = await waitForDropWindow({
-    deadlineMs,
-    leadTimeMs: () => leadTimeMs,
-    label: 'Drop',
-    signal,
-    milestones: [
-      {
-        atMs: 15000,
-        label: 'T-15s: Price watchdog & nonces refresh',
-        run: async () => {
-          logger.info('T-15s: Refreshing nonces and verifying on-chain price integrity...');
+  // ─── LIVE CONTRACT WATCHDOG ─────────────────────────────────────
+  // Polls the SeaDrop contract every 20 seconds during the countdown.
+  // Detects: time changes (earlier/later), price changes, and drop
+  // cancellations. Updates a shared deadline that the countdown reads
+  // on every tick via a function reference.
+  let liveDeadlineMs = deadlineMs;
+  let watchdogTimer = null;
+  const WATCHDOG_INTERVAL_MS = 20_000;
 
-          // 1. Live On-Chain Price & Bait-and-Switch Watchdog
-          try {
-            const freshDrop = await getPublicDropParams(provider, seadropAddress, nftContractAddress);
-            if (freshDrop && freshDrop.mintPrice !== currentMintPriceWei) {
-              const oldPriceEth = ethers.formatEther(currentMintPriceWei);
-              const newPriceEth = ethers.formatEther(freshDrop.mintPrice);
+  const notifyTelegram = (msg) => {
+    if (typeof config.onAlert === 'function') {
+      try { config.onAlert(msg); } catch {}
+    }
+  };
 
-              // Strict Bait & Switch Guard: Free mint stealth-changed to paid
-              if (isFreeMint && freshDrop.mintPrice > 0n) {
-                logger.error(`🚨 BAIT & SWITCH DETECTED: Drop price changed from FREE (0.00 ETH) to ${newPriceEth} ETH!`);
-                logger.error(`🛡️ ABORTING MINT IMMEDIATELY to protect wallet funds.`);
-                throw new Error(`Bait & switch prevented: creator raised price on free drop to ${newPriceEth} ETH.`);
-              }
+  if (deadlineMs && deadlineMs > Date.now() + 30_000) {
+    watchdogTimer = setInterval(async () => {
+      try {
+        const freshDrop = await getPublicDropParams(provider, seadropAddress, nftContractAddress);
+        if (!freshDrop) return;
 
-              // Price increased above initially armed price
-              if (freshDrop.mintPrice > armedPriceWei) {
-                logger.error(`🚨 PRICE INCREASE DETECTED: Price increased from ${oldPriceEth} ETH to ${newPriceEth} ETH!`);
-                logger.error(`🛡️ ABORTING MINT to prevent unexpected spend.`);
-                throw new Error(`Price increase prevented: creator changed price from ${oldPriceEth} ETH to ${newPriceEth} ETH.`);
-              }
+        const freshStartTime = Number(freshDrop.startTime);
+        const freshEndTime = Number(freshDrop.endTime);
+        const nowSec = Math.floor(Date.now() / 1000);
 
-              // Price decreased (safe price drop): Auto-update and re-sign
-              logger.warn(`⚠️ On-chain price decreased: ${oldPriceEth} ETH -> ${newPriceEth} ETH. Auto-updating transactions...`);
-              currentMintPriceWei = freshDrop.mintPrice;
-              totalCostPerWalletWei = currentMintPriceWei * BigInt(quantity);
-              dropParams.feeRecipient = freshDrop.feeRecipient;
+        // 1. Drop cancelled — endTime set to past
+        if (freshEndTime > 0 && freshEndTime <= nowSec) {
+          logger.error(`🚫 WATCHDOG: Drop CANCELLED — endTime is now in the past (${new Date(freshEndTime * 1000).toLocaleTimeString()}).`);
+          notifyTelegram(`🚫 <b>DROP CANCELLED!</b>\nThe creator set endTime to ${new Date(freshEndTime * 1000).toLocaleTimeString()}. Aborting snipe.`);
+          clearInterval(watchdogTimer);
+          watchdogTimer = null;
+          return;
+        }
 
-              for (const p of validPrepared) {
-                const calldata = encodeMintPublicCalldata(nftContractAddress, dropParams.feeRecipient, p.wallet.address, quantity);
-                p.rawTxObj.data = calldata;
-                p.rawTxObj.value = totalCostPerWalletWei;
-                p.signedTx = await p.wallet.signTransaction(p.rawTxObj);
-                p.rawBuffer = connectionManager.createRawBufferPayload(p.signedTx);
-                await presignBackups(p);
-              }
-              logger.success(`Transactions updated to new price (${newPriceEth} ETH).`);
-            }
-          } catch (watchdogErr) {
-            if (watchdogErr.message && watchdogErr.message.includes('prevented')) {
-              throw watchdogErr;
-            }
+        // 2. Start time changed
+        if (freshStartTime > 0 && freshStartTime !== onChainStartTime) {
+          const oldTime = new Date(onChainStartTime * 1000).toLocaleTimeString();
+          const newTime = new Date(freshStartTime * 1000).toLocaleTimeString();
+          const diffMin = ((freshStartTime - onChainStartTime) / 60).toFixed(1);
+
+          if (freshStartTime < onChainStartTime) {
+            logger.warn(`⚡ WATCHDOG: Drop time MOVED EARLIER by ${Math.abs(diffMin)}min! ${oldTime} → ${newTime}`);
+            notifyTelegram(`⚡ <b>DROP TIME MOVED EARLIER!</b>\n<code>${oldTime}</code> → <code>${newTime}</code> (${Math.abs(diffMin)}min sooner)\nCountdown auto-synced.`);
+          } else {
+            logger.warn(`⏰ WATCHDOG: Drop time DELAYED by ${diffMin}min! ${oldTime} → ${newTime}`);
+            notifyTelegram(`⏰ <b>DROP TIME DELAYED!</b>\n<code>${oldTime}</code> → <code>${newTime}</code> (+${diffMin}min)\nCountdown auto-synced.`);
           }
 
-          // 2. Nonce Refresh
-          await WalletService.prefetchNonces(validPrepared.map(p => p.wallet), provider);
+          // Update the shared state so the countdown dynamically adjusts
+          onChainStartTime = freshStartTime;
+          startTime = freshStartTime;
+          liveDeadlineMs = freshStartTime * 1000;
+        }
+
+        // 3. Price changed
+        if (freshDrop.mintPrice !== currentMintPriceWei) {
+          const oldPriceEth = ethers.formatEther(currentMintPriceWei);
+          const newPriceEth = ethers.formatEther(freshDrop.mintPrice);
+
+          // Bait-and-switch: free → paid
+          if (isFreeMint && freshDrop.mintPrice > 0n) {
+            logger.error(`🚨 WATCHDOG: BAIT & SWITCH — Price changed from FREE to ${newPriceEth} ETH!`);
+            notifyTelegram(`🚨 <b>BAIT & SWITCH DETECTED!</b>\nPrice changed from <b>FREE</b> to <b>${newPriceEth} ETH</b>. Aborting!`);
+            clearInterval(watchdogTimer);
+            watchdogTimer = null;
+            return;
+          }
+
+          // Price increased above armed price
+          if (freshDrop.mintPrice > armedPriceWei) {
+            logger.error(`🚨 WATCHDOG: PRICE INCREASE — ${oldPriceEth} ETH → ${newPriceEth} ETH!`);
+            notifyTelegram(`🚨 <b>PRICE INCREASED!</b>\n<code>${oldPriceEth} ETH</code> → <code>${newPriceEth} ETH</code>. Aborting!`);
+            clearInterval(watchdogTimer);
+            watchdogTimer = null;
+            return;
+          }
+
+          // Price decreased — safe, auto-update and re-sign transactions
+          logger.warn(`💰 WATCHDOG: Price decreased! ${oldPriceEth} → ${newPriceEth} ETH. Re-signing transactions...`);
+          notifyTelegram(`💰 <b>PRICE DROPPED!</b>\n<code>${oldPriceEth} ETH</code> → <code>${newPriceEth} ETH</code>\nTransactions auto-updated.`);
+          currentMintPriceWei = freshDrop.mintPrice;
+          totalCostPerWalletWei = currentMintPriceWei * BigInt(quantity);
+          dropParams.feeRecipient = freshDrop.feeRecipient;
+
           for (const p of validPrepared) {
             try {
-              const freshNonce = WalletService.consumeNonce(p.wallet.address) ?? await provider.getTransactionCount(p.wallet.address, 'pending');
-              if (freshNonce !== p.nonce) {
-                p.nonce = freshNonce;
-                p.rawTxObj.nonce = freshNonce;
-                p.signedTx = await p.wallet.signTransaction(p.rawTxObj);
-                p.rawBuffer = connectionManager.createRawBufferPayload(p.signedTx);
-                // The recovery ladder is nonce-relative, so it is invalid now.
-                await presignBackups(p);
-              }
-            } catch (e) {}
-          }
-        }
-      },
-      {
-        atMs: 5000,
-        label: 'T-5s: DNS, socket warming & latency calibration',
-        run: async () => {
-          logger.info('T-5s: Pre-resolving DNS, warming persistent socket pool, and pre-serializing transaction buffers...');
-          for (const p of validPrepared) {
-            if (p.signedTx) {
+              const calldata = encodeMintPublicCalldata(nftContractAddress, dropParams.feeRecipient, p.wallet.address, quantity);
+              p.rawTxObj.data = calldata;
+              p.rawTxObj.value = totalCostPerWalletWei;
+              p.signedTx = await p.wallet.signTransaction(p.rawTxObj);
               p.rawBuffer = connectionManager.createRawBufferPayload(p.signedTx);
+              await presignBackups(p);
+            } catch (resignErr) {
+              logger.warn(`WATCHDOG: Re-sign failed for ${p.wallet.address.slice(0, 6)}...: ${resignErr.message}`);
             }
           }
-          await Promise.all([
-            connectionManager.preResolveDns(broadcaster.rpcUrls),
-            connectionManager.preWarmSockets(broadcaster.rpcUrls)
-          ]);
+          logger.success(`WATCHDOG: All transactions updated to new price (${newPriceEth} ETH).`);
+        }
+      } catch (err) {
+        // Non-fatal — RPC hiccup during poll, will retry in 20s
+        logger.warn(`WATCHDOG: Poll error (will retry): ${err.message}`);
+      }
+    }, WATCHDOG_INTERVAL_MS);
 
-          // Calibrate against the fastest live write path from this host. This
-          // races direct sequencer ingress, QuickNode and any private RPC rather
-          // than assuming endpoint order equals network reality.
-          const writeRace = await connectionManager.measureEndpointRace(broadcaster.endpoints, 5);
-          const fastestWrite = writeRace[0] || null;
-          if (writeRace.length) {
+    logger.info(`🔭 Live contract watchdog started (polling every ${WATCHDOG_INTERVAL_MS / 1000}s for time/price changes)`);
+  }
+
+  // ─── COUNTDOWN ──────────────────────────────────────────────────
+  let dropTrigger;
+  try {
+    dropTrigger = await waitForDropWindow({
+      deadlineMs: () => liveDeadlineMs,
+      leadTimeMs: () => leadTimeMs,
+      label: 'Drop',
+      signal,
+      milestones: [
+        {
+          atMs: 15000,
+          label: 'T-15s: Price watchdog & nonces refresh',
+          run: async () => {
+            logger.info('T-15s: Refreshing nonces and verifying on-chain price integrity...');
+
+            // 1. Live On-Chain Price & Bait-and-Switch Watchdog
+            try {
+              const freshDrop = await getPublicDropParams(provider, seadropAddress, nftContractAddress);
+              if (freshDrop && freshDrop.mintPrice !== currentMintPriceWei) {
+                const oldPriceEth = ethers.formatEther(currentMintPriceWei);
+                const newPriceEth = ethers.formatEther(freshDrop.mintPrice);
+
+                // Strict Bait & Switch Guard: Free mint stealth-changed to paid
+                if (isFreeMint && freshDrop.mintPrice > 0n) {
+                  logger.error(`🚨 BAIT & SWITCH DETECTED: Drop price changed from FREE (0.00 ETH) to ${newPriceEth} ETH!`);
+                  logger.error(`🛡️ ABORTING MINT IMMEDIATELY to protect wallet funds.`);
+                  throw new Error(`Bait & switch prevented: creator raised price on free drop to ${newPriceEth} ETH.`);
+                }
+
+                // Price increased above initially armed price
+                if (freshDrop.mintPrice > armedPriceWei) {
+                  logger.error(`🚨 PRICE INCREASE DETECTED: Price increased from ${oldPriceEth} ETH to ${newPriceEth} ETH!`);
+                  logger.error(`🛡️ ABORTING MINT to prevent unexpected spend.`);
+                  throw new Error(`Price increase prevented: creator changed price from ${oldPriceEth} ETH to ${newPriceEth} ETH.`);
+                }
+
+                // Price decreased (safe price drop): Auto-update and re-sign
+                logger.warn(`⚠️ On-chain price decreased: ${oldPriceEth} ETH -> ${newPriceEth} ETH. Auto-updating transactions...`);
+                currentMintPriceWei = freshDrop.mintPrice;
+                totalCostPerWalletWei = currentMintPriceWei * BigInt(quantity);
+                dropParams.feeRecipient = freshDrop.feeRecipient;
+
+                for (const p of validPrepared) {
+                  const calldata = encodeMintPublicCalldata(nftContractAddress, dropParams.feeRecipient, p.wallet.address, quantity);
+                  p.rawTxObj.data = calldata;
+                  p.rawTxObj.value = totalCostPerWalletWei;
+                  p.signedTx = await p.wallet.signTransaction(p.rawTxObj);
+                  p.rawBuffer = connectionManager.createRawBufferPayload(p.signedTx);
+                  await presignBackups(p);
+                }
+                logger.success(`Transactions updated to new price (${newPriceEth} ETH).`);
+              }
+            } catch (watchdogErr) {
+              if (watchdogErr.message && watchdogErr.message.includes('prevented')) {
+                throw watchdogErr;
+              }
+            }
+
+            // 2. Nonce Refresh
+            await WalletService.prefetchNonces(validPrepared.map(p => p.wallet), provider);
+            for (const p of validPrepared) {
+              try {
+                const freshNonce = WalletService.consumeNonce(p.wallet.address) ?? await provider.getTransactionCount(p.wallet.address, 'pending');
+                if (freshNonce !== p.nonce) {
+                  p.nonce = freshNonce;
+                  p.rawTxObj.nonce = freshNonce;
+                  p.signedTx = await p.wallet.signTransaction(p.rawTxObj);
+                  p.rawBuffer = connectionManager.createRawBufferPayload(p.signedTx);
+                  // The recovery ladder is nonce-relative, so it is invalid now.
+                  await presignBackups(p);
+                }
+              } catch (e) {}
+            }
+          }
+        },
+        {
+          atMs: 5000,
+          label: 'T-5s: DNS, socket warming & latency calibration',
+          run: async () => {
+            logger.info('T-5s: Pre-resolving DNS, warming persistent socket pool, and pre-serializing transaction buffers...');
+            for (const p of validPrepared) {
+              if (p.signedTx) {
+                p.rawBuffer = connectionManager.createRawBufferPayload(p.signedTx);
+              }
+            }
+            await Promise.all([
+              connectionManager.preResolveDns(broadcaster.rpcUrls),
+              connectionManager.preWarmSockets(broadcaster.rpcUrls)
+            ]);
+
+            // Calibrate against the fastest live write path from this host. This
+            // races direct sequencer ingress, QuickNode and any private RPC rather
+            // than assuming endpoint order equals network reality.
+            const writeRace = await connectionManager.measureEndpointRace(broadcaster.endpoints, 5);
+            const fastestWrite = writeRace[0] || null;
+            if (writeRace.length) {
+              logger.speed(
+                `Write-path RTT race: ${writeRace.map(e => `${e.label} ${Math.round(e.rttMs)}ms`).join(' | ')}`
+              );
+            } else {
+              logger.warn('Write-path RTT race produced no live samples; using default lead-time.');
+            }
+            const rttMs = fastestWrite ? fastestWrite.rttMs : null;
+            const calibration = calibrateLeadTimeMs(rttMs);
+            leadTimeMs = calibration.leadTimeMs;
             logger.speed(
-              `Write-path RTT race: ${writeRace.map(e => `${e.label} ${Math.round(e.rttMs)}ms`).join(' | ')}`
+              `Lead time set to ${leadTimeMs}ms (${fastestWrite ? fastestWrite.label : calibration.source}) — ` +
+              'trigger fires one network flight before the drop opens.'
             );
-          } else {
-            logger.warn('Write-path RTT race produced no live samples; using default lead-time.');
           }
-          const rttMs = fastestWrite ? fastestWrite.rttMs : null;
-          const calibration = calibrateLeadTimeMs(rttMs);
-          leadTimeMs = calibration.leadTimeMs;
-          logger.speed(
-            `Lead time set to ${leadTimeMs}ms (${fastestWrite ? fastestWrite.label : calibration.source}) — ` +
-            'trigger fires one network flight before the drop opens.'
-          );
-        }
-      },
-      {
-        atMs: 2000,
-        label: 'T-2s: Pre-flight simulation',
-        run: async () => {
-          if (!validPrepared[0] || !validPrepared[0].rawTxObj) return;
-          const sim = await simulator.simulate({
-            from: validPrepared[0].wallet.address,
-            to: seadropAddress,
-            data: validPrepared[0].rawTxObj.data,
-            value: totalCostPerWalletWei
-          }, true);
-          if (!sim.success) {
-            logger.warn(`Pre-flight simulation notice: ${sim.revertReason}`);
-          } else {
-            logger.success('Pre-flight simulation passed.');
+        },
+        {
+          atMs: 2000,
+          label: 'T-2s: Pre-flight simulation',
+          run: async () => {
+            if (!validPrepared[0] || !validPrepared[0].rawTxObj) return;
+            const sim = await simulator.simulate({
+              from: validPrepared[0].wallet.address,
+              to: seadropAddress,
+              data: validPrepared[0].rawTxObj.data,
+              value: totalCostPerWalletWei
+            }, true);
+            if (!sim.success) {
+              logger.warn(`Pre-flight simulation notice: ${sim.revertReason}`);
+            } else {
+              logger.success('Pre-flight simulation passed.');
+            }
+          }
+        },
+        {
+          // Final socket top-up and GC. Both have to happen BEFORE the spin loop:
+          // the keep-alive pool is already hot from T-5s, so re-warming after the
+          // trigger would spend a full round-trip and hand back the lead time we
+          // just measured. The collection is here for the same reason — warmup
+          // (signing, re-signing, buffers, DNS, simulation) has filled the young
+          // generation, so the next allocation would trigger a scavenge, and the
+          // next allocation is the broadcast. Taking the pause now costs nothing.
+          atMs: 800,
+          label: 'T-0.8s: Final socket top-up & GC quiesce',
+          run: async () => {
+            await connectionManager.preWarmSockets(broadcaster.rpcUrls);
+            gcGuard.quiesce('T-0.8s');
           }
         }
-      },
-      {
-        // Final socket top-up and GC. Both have to happen BEFORE the spin loop:
-        // the keep-alive pool is already hot from T-5s, so re-warming after the
-        // trigger would spend a full round-trip and hand back the lead time we
-        // just measured. The collection is here for the same reason — warmup
-        // (signing, re-signing, buffers, DNS, simulation) has filled the young
-        // generation, so the next allocation would trigger a scavenge, and the
-        // next allocation is the broadcast. Taking the pause now costs nothing.
-        atMs: 800,
-        label: 'T-0.8s: Final socket top-up & GC quiesce',
-        run: async () => {
-          await connectionManager.preWarmSockets(broadcaster.rpcUrls);
-          gcGuard.quiesce('T-0.8s');
+      ],
+      // The sequencer's clock is the only one that counts: if it has already
+      // reached the on-chain start time, waiting any longer is pure loss.
+      //
+      // Prefer the feed. Reading the same fact with `getBlock('latest')` costs a
+      // full round-trip (~240ms measured), so a polling check learns the drop
+      // opened well after the fact — on a FIFO chain that lateness is the drop.
+      // The feed pushes the sequencer's own timestamp with no request at all.
+      earlyTrigger: onChainStartTime > 0 ? {
+        withinMs: 2500,
+        message: '⚡ Sequencer clock reached drop time! Launching instant blast...',
+        check: async () => {
+          if (feed && feed.hasReachedTimestamp(onChainStartTime)) return true;
+          // Feed absent, or its clock went stale because the chain is idle.
+          const block = await provider.getBlock('latest').catch(() => null);
+          return !!(block && Number(block.timestamp) >= onChainStartTime);
         }
-      }
-    ],
-    // The sequencer's clock is the only one that counts: if it has already
-    // reached the on-chain start time, waiting any longer is pure loss.
-    //
-    // Prefer the feed. Reading the same fact with `getBlock('latest')` costs a
-    // full round-trip (~240ms measured), so a polling check learns the drop
-    // opened well after the fact — on a FIFO chain that lateness is the drop.
-    // The feed pushes the sequencer's own timestamp with no request at all.
-    earlyTrigger: onChainStartTime > 0 ? {
-      withinMs: 2500,
-      message: '⚡ Sequencer clock reached drop time! Launching instant blast...',
-      check: async () => {
-        if (feed && feed.hasReachedTimestamp(onChainStartTime)) return true;
-        // Feed absent, or its clock went stale because the chain is idle.
-        const block = await provider.getBlock('latest').catch(() => null);
-        return !!(block && Number(block.timestamp) >= onChainStartTime);
-      }
-    } : null,
-    signal
-  });
+      } : null,
+      signal
+    });
+  } finally {
+    // Always clean up the watchdog interval
+    if (watchdogTimer) {
+      clearInterval(watchdogTimer);
+      watchdogTimer = null;
+    }
+  }
 
   if (signal && signal.aborted) {
     const err = new Error('Snipe cancelled by user before broadcast');

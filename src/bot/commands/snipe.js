@@ -777,6 +777,9 @@ async function scheduleDropInBackground(ctx, data, messageId = null, existingDro
         postMintConfig: data.postMintConfig || null,
         recipientAddress: data.recipientAddress || state.recipientAddress || process.env.RECIPIENT_ADDRESS || null,
         onFiring,
+        onAlert: (msg) => {
+          client.sendMessage(chatId, msg, { parse_mode: 'HTML' }).catch(() => {});
+        },
         signal: abortController.signal
       });
 

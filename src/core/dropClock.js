@@ -272,6 +272,10 @@ async function waitForDropWindow({
   label = 'Drop',
   signal = null
 } = {}) {
+  // deadlineMs may be a number OR a function (re-read every pass so a watchdog
+  // can move the target mid-countdown without restarting the clock).
+  const readDeadline = typeof deadlineMs === 'function' ? deadlineMs : () => (deadlineMs || 0);
+
   // Re-read every pass: a milestone may calibrate this mid-countdown, and the
   // fire instant has to move with it.
   const readLead = () => {
@@ -279,10 +283,11 @@ async function waitForDropWindow({
     return raw == null || !Number.isFinite(raw) ? resolveLeadTimeMs() : Math.max(0, raw);
   };
 
+  let currentDeadline = readDeadline();
   let lead = readLead();
-  let targetFireMs = (deadlineMs || 0) - lead;
+  let targetFireMs = (currentDeadline || 0) - lead;
 
-  if (!deadlineMs || deadlineMs <= Date.now()) {
+  if (!currentDeadline || currentDeadline <= Date.now()) {
     return { reason: 'immediate', leadTimeMs: lead, firedAtMs: Date.now(), overshootMs: 0 };
   }
 
@@ -299,8 +304,8 @@ async function waitForDropWindow({
   const done = new Set();
 
   logger.timer(
-    `${label} starts at ${new Date(deadlineMs).toLocaleTimeString()} ` +
-    `(in ${logger.formatDuration(Math.ceil((deadlineMs - Date.now()) / 1000))}) [Lead-Time: ${lead}ms]`
+    `${label} starts at ${new Date(currentDeadline).toLocaleTimeString()} ` +
+    `(in ${logger.formatDuration(Math.ceil((currentDeadline - Date.now()) / 1000))}) [Lead-Time: ${lead}ms]`
   );
 
   const finish = (reason) => {
@@ -321,11 +326,26 @@ async function waitForDropWindow({
     }
 
     let now = Date.now();
-    const remainingMs = deadlineMs - now;
+
+    // Re-read deadline — a watchdog may have moved it
+    const freshDeadline = readDeadline();
+    if (freshDeadline !== currentDeadline && freshDeadline > 0) {
+      const shiftSec = ((freshDeadline - currentDeadline) / 1000).toFixed(1);
+      logger.timer(
+        `⏱️ Deadline shifted by ${shiftSec}s → new target: ` +
+        `${new Date(freshDeadline).toLocaleTimeString()} ` +
+        `(in ${logger.formatDuration(Math.ceil((freshDeadline - now) / 1000))})`
+      );
+      currentDeadline = freshDeadline;
+      // Reset milestone tracking so they fire at the right relative time
+      done.clear();
+    }
+
+    const remainingMs = currentDeadline - now;
 
     // A milestone may have recalibrated the lead time from a live latency probe.
     lead = readLead();
-    targetFireMs = deadlineMs - lead;
+    targetFireMs = currentDeadline - lead;
 
     // 1. Warmup ladder. Run at most one per pass, then re-read the clock —
     //    a milestone can take seconds, so any decision made after it must use
@@ -338,7 +358,7 @@ async function waitForDropWindow({
         ` [${due.label}...]    \n`
       );
       try {
-        await due.run({ remainingMs, deadlineMs, leadTimeMs: lead });
+        await due.run({ remainingMs, deadlineMs: currentDeadline, leadTimeMs: lead });
       } catch (err) {
         logger.warn(`${due.label} failed (continuing): ${err.message}`);
       }
@@ -349,7 +369,7 @@ async function waitForDropWindow({
     if (earlyTrigger && typeof earlyTrigger.check === 'function' && remainingMs <= earlyTriggerWindowMs(earlyTrigger)) {
       let hit = false;
       try {
-        hit = await earlyTrigger.check({ remainingMs, deadlineMs });
+        hit = await earlyTrigger.check({ remainingMs, deadlineMs: currentDeadline });
       } catch (err) {
         hit = false;
       }
@@ -375,9 +395,9 @@ async function waitForDropWindow({
 
     process.stdout.write(
       `\r${chalk.blue('[timer]')} ${label} starts in ` +
-      `${chalk.yellow(logger.formatDuration((deadlineMs - now) / 1000, true))}...    `
+      `${chalk.yellow(logger.formatDuration((currentDeadline - now) / 1000, true))}...    `
     );
-    await abortableSleep(nextTickMs({ now, deadlineMs, targetFireMs, spinWindowMs, milestones: ladder, done, earlyTrigger }), signal);
+    await abortableSleep(nextTickMs({ now, deadlineMs: currentDeadline, targetFireMs, spinWindowMs, milestones: ladder, done, earlyTrigger }), signal);
   }
 }
 
