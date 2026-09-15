@@ -221,7 +221,7 @@ async function executePublicMint(config, state) {
   // on every tick via a function reference.
   let liveDeadlineMs = deadlineMs;
   let watchdogTimer = null;
-  const WATCHDOG_INTERVAL_MS = 20_000;
+  const WATCHDOG_INTERVAL_MS = 5_000;
 
   const notifyTelegram = (msg) => {
     if (typeof config.onAlert === 'function') {
