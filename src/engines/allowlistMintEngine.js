@@ -522,42 +522,10 @@ async function executeAllowlistMint(config, state) {
         }
       },
       {
-        atMs: 5000,
-        label: 'T-5s: DNS, socket warming & latency calibration',
+        atMs: 8000,
+        label: 'T-8s: Calldata hammer',
         run: async () => {
-          logger.info('T-5s: Pre-resolving DNS, warming sockets, and calibrating lead time...');
-          const targets = ['https://api.opensea.io', ...broadcaster.rpcUrls];
-          await Promise.all([
-            connectionManager.preResolveDns(targets),
-            connectionManager.preWarmSockets(targets)
-          ]);
-
-          // Calibrate against the fastest live write path from this host. This
-          // races direct sequencer ingress, QuickNode and any private RPC rather
-          // than assuming endpoint order equals network reality.
-          const writeRace = await connectionManager.measureEndpointRace(broadcaster.endpoints, 5);
-          const fastestWrite = writeRace[0] || null;
-          if (writeRace.length) {
-            logger.speed(
-              `Write-path RTT race: ${writeRace.map(e => `${e.label} ${Math.round(e.rttMs)}ms`).join(' | ')}`
-            );
-          } else {
-            logger.warn('Write-path RTT race produced no live samples; using default lead-time.');
-          }
-          const rttMs = fastestWrite ? fastestWrite.rttMs : null;
-          const calibration = calibrateLeadTimeMs(rttMs);
-          leadTimeMs = calibration.leadTimeMs;
-          logger.speed(
-            `Lead time set to ${leadTimeMs}ms (${fastestWrite ? fastestWrite.label : calibration.source}) — ` +
-            'trigger fires one network flight before the drop opens.'
-          );
-        }
-      },
-      {
-        atMs: 3000,
-        label: 'T-3s: Calldata hammer',
-        run: async () => {
-          logger.speed('T-3s: Hammering OpenSea Drops API for calldata (1.5s timeout)...');
+          logger.speed('T-8s: Hammering OpenSea Drops API for calldata (800ms timeout)...');
           // Extended post-deadline window: OpenSea may delay publishing calldata
           // up to 5s after the drop starts on overloaded drops.
           const hammerEnd = deadlineMs + 5000;
@@ -565,13 +533,13 @@ async function executeAllowlistMint(config, state) {
           while (Date.now() < hammerEnd && calldataMap.size === 0) {
             hammerAttempt++;
             try {
-              calldataMap = await fetchCalldata(1500);
+              calldataMap = await fetchCalldata(800);
               if (calldataMap.size > 0) {
                 logger.success(`Early calldata acquired for ${calldataMap.size} wallet(s) on attempt #${hammerAttempt}!`);
                 break;
               }
             } catch (err) {}
-            await new Promise(r => setTimeout(r, 100));
+            await new Promise(r => setTimeout(r, 80));
           }
 
           // Second wave: if we got partial results (some wallets eligible, some
@@ -581,7 +549,7 @@ async function executeAllowlistMint(config, state) {
             if (missingWallets.length > 0) {
               logger.info(`Second-wave fetch for ${missingWallets.length} wallet(s) that didn't get calldata yet...`);
               try {
-                const secondWave = await fetchAllCalldata(missingWallets, config, authHeadersByAddress, fallbackAuthHeaders, 2000);
+                const secondWave = await fetchAllCalldata(missingWallets, config, authHeadersByAddress, fallbackAuthHeaders, 1200);
                 for (const [addr, data] of secondWave) {
                   calldataMap.set(addr, data);
                 }
@@ -603,23 +571,49 @@ async function executeAllowlistMint(config, state) {
         }
       },
       {
-        // Anything costing a network round-trip has to be done before the spin
-        // loop, or the lead time gets spent on a gas lookup instead of travel.
-        atMs: 2000,
-        label: 'T-2s: Gas estimate & pre-flight simulation',
+        atMs: 5000,
+        label: 'T-5s: DNS, sockets, latency calibration & gas estimate (parallel)',
         run: async () => {
-          if (calldataMap.size === 0) return;
-          await ensureGasFees();
-          await runPreflightSimulation();
+          logger.info('T-5s: Pre-resolving DNS, warming sockets, calibrating lead time & estimating gas (all parallel)...');
+          const targets = ['https://api.opensea.io', ...broadcaster.rpcUrls];
+
+          // Run DNS, sockets, latency race AND gas estimate all in parallel
+          const [,, writeRace] = await Promise.all([
+            connectionManager.preResolveDns(targets),
+            connectionManager.preWarmSockets(targets),
+            connectionManager.measureEndpointRace(broadcaster.endpoints, 5),
+            ensureGasFees()
+          ]);
+
+          const fastestWrite = writeRace[0] || null;
+          if (writeRace.length) {
+            logger.speed(
+              `Write-path RTT race: ${writeRace.map(e => `${e.label} ${Math.round(e.rttMs)}ms`).join(' | ')}`
+            );
+          } else {
+            logger.warn('Write-path RTT race produced no live samples; using default lead-time.');
+          }
+          const rttMs = fastestWrite ? fastestWrite.rttMs : null;
+          const calibration = calibrateLeadTimeMs(rttMs);
+          leadTimeMs = calibration.leadTimeMs;
+          logger.speed(
+            `Lead time set to ${leadTimeMs}ms (${fastestWrite ? fastestWrite.label : calibration.source}) — ` +
+            'trigger fires one network flight before the drop opens.'
+          );
         }
       },
       {
-        atMs: 900,
-        label: 'T-0.9s: Pre-signing & final socket top-up',
+        atMs: 2000,
+        label: 'T-2s: Pre-sign, simulation & final socket top-up (parallel)',
         run: async () => {
           if (calldataMap.size === 0) return;
-          preparedTxs = await presignAll();
-          await connectionManager.preWarmSockets(broadcaster.rpcUrls);
+          // Run pre-signing, pre-flight simulation and socket top-up in parallel
+          const [signed] = await Promise.all([
+            presignAll(),
+            runPreflightSimulation(),
+            connectionManager.preWarmSockets(broadcaster.rpcUrls)
+          ]);
+          preparedTxs = signed;
         }
       },
       {

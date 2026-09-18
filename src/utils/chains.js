@@ -87,6 +87,15 @@ const CHAINS = {
     alchemyPrefix: 'opt-mainnet',
     explorerUrl: 'https://optimistic.etherscan.io',
     seadropAddress: '0x00005EA00Ac477B1030CE78506496e8C2dE24bf5'
+  },
+  ARC: {
+    name: 'Arc Network (Circle L1)',
+    chainId: 5042,
+    symbol: 'USDC',
+    defaultRpc: 'https://rpc.mainnet.arc.io',
+    alchemyPrefix: null,
+    explorerUrl: 'https://explorer.arc.io',
+    seadropAddress: '0x00005EA00Ac477B1030CE78506496e8C2dE24bf5'
   }
 };
 
@@ -145,6 +154,7 @@ function getChainKey(chain) {
     if (CHAINS[uc]) return uc;
     if (uc.includes('ROBINHOOD') && uc.includes('TESTNET')) return 'ROBINHOOD_TESTNET';
     if (uc.includes('ROBINHOOD')) return 'ROBINHOOD';
+    if (uc.includes('ARC')) return 'ARC';
     if (uc.includes('BASE')) return 'BASE';
     if (uc.includes('ARBITRUM') || uc.includes('ARB')) return 'ARBITRUM';
     if (uc.includes('OPTIMISM') || uc.includes('OPT')) return 'OPTIMISM';
@@ -174,7 +184,7 @@ function getChainKey(chain) {
 function isLayer2Chain(chain) {
   if (!chain) return false;
   const key = getChainKey(chain);
-  return ['ROBINHOOD', 'ROBINHOOD_TESTNET', 'BASE', 'ARBITRUM', 'OPTIMISM'].includes(key);
+  return ['ROBINHOOD', 'ROBINHOOD_TESTNET', 'BASE', 'ARBITRUM', 'OPTIMISM', 'ARC'].includes(key);
 }
 
 module.exports = {

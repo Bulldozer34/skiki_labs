@@ -84,8 +84,8 @@ async function executePublicMint(config, state) {
   logger.info(`Restricted Fee Recipients: ${dropParams.restrictFeeRecipients ? 'Yes' : 'No'}`);
   logger.info(`Max Total Per Wallet: ${dropParams.maxMintable.toString()}`);
 
-  const onChainStartTime = Number(dropParams.startTime);
-  const onChainEndTime = Number(dropParams.endTime);
+  let onChainStartTime = Number(dropParams.startTime);
+  let onChainEndTime = Number(dropParams.endTime);
   const nowSec = Math.floor(Date.now() / 1000);
 
   if (onChainEndTime > 0 && onChainEndTime <= nowSec) {
@@ -221,7 +221,7 @@ async function executePublicMint(config, state) {
   // on every tick via a function reference.
   let liveDeadlineMs = deadlineMs;
   let watchdogTimer = null;
-  const WATCHDOG_INTERVAL_MS = 5_000;
+  const WATCHDOG_INTERVAL_MS = 20_000;
 
   const notifyTelegram = (msg) => {
     if (typeof config.onAlert === 'function') {
@@ -473,14 +473,14 @@ async function executePublicMint(config, state) {
       // full round-trip (~240ms measured), so a polling check learns the drop
       // opened well after the fact — on a FIFO chain that lateness is the drop.
       // The feed pushes the sequencer's own timestamp with no request at all.
-      earlyTrigger: onChainStartTime > 0 ? {
+      earlyTrigger: startTime > 0 ? {
         withinMs: 2500,
         message: '⚡ Sequencer clock reached drop time! Launching instant blast...',
         check: async () => {
-          if (feed && feed.hasReachedTimestamp(onChainStartTime)) return true;
+          if (feed && feed.hasReachedTimestamp(startTime)) return true;
           // Feed absent, or its clock went stale because the chain is idle.
           const block = await provider.getBlock('latest').catch(() => null);
-          return !!(block && Number(block.timestamp) >= onChainStartTime);
+          return !!(block && Number(block.timestamp) >= startTime);
         }
       } : null,
       signal
